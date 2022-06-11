@@ -29,4 +29,14 @@ public class WeatherForecastController : ControllerBase
         })
         .ToArray();
     }
+
+    // get weather
+    // url /weather
+    [HttpGet("/weather")]
+    public IActionResult GetWeather()
+    {
+        var test = Environment.GetEnvironmentVariable("TEST");
+        return Ok(test);
+    }
+    
 }
