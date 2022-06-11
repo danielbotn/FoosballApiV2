@@ -1,16 +1,18 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// var portVar = Environment.GetEnvironmentVariable("PORT");
+DotNetEnv.Env.Load();
 
-// if (portVar is {Length: >0} && int.TryParse(portVar, out int port))
-// {
-builder.WebHost.ConfigureKestrel(options =>
+var portVar = Environment.GetEnvironmentVariable("PORT");
+
+if (portVar is {Length: >0} && int.TryParse(portVar, out int port))
 {
-    options.ListenAnyIP(5297);
-    options.ListenAnyIP(7145);
-    options.ListenAnyIP(8080);
-});
-// }
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenAnyIP(5297);
+        options.ListenAnyIP(7145);
+        options.ListenAnyIP(port);
+    });
+}
 
 // Add services to the container.
 
