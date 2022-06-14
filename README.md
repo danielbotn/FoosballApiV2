@@ -17,3 +17,7 @@ you cant access swagger html page from docker, beacause its in production and sw
 # stop docker run
 
 just kill the terminal in vscode should work
+
+# generate schema for database
+
+https://support.sqldbm.com/en/knowledge-bases/2/articles/2407-how-to-generate-sql-script-from-pgadmin-for-reverse-engineering
