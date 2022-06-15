@@ -38,8 +38,8 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var users = await conn.QueryAsync<User>(
-                    @"SELECT id, email, first_name as FirstName, last_name as LastName, created_at, current_organisation_id as CurrentOrganisationId, 
-                    photo_url as PhotoUrl 
+                    @"SELECT id, email, first_name as FirstName, last_name as LastName, created_at, 
+                    current_organisation_id as CurrentOrganisationId, photo_url as PhotoUrl 
                     FROM Users WHERE current_organisation_id = @currentOrganisationId",
                 new { currentOrganisationId });
                 return users.ToList();
