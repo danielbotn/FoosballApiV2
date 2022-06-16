@@ -141,5 +141,23 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("stats/last-ten-matches")]
+        [ProducesResponseType(typeof(IEnumerable<MatchReadDto>), StatusCodes.Status200OK)]
+        public ActionResult<IEnumerable<MatchReadDto>> GetLastTenMatches()
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                var data = _userService.GetLastTenMatchesByUserId(int.Parse(userId));
+
+                return Ok(_mapper.Map<IEnumerable<MatchReadDto>>(data));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
