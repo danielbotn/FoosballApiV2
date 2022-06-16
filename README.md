@@ -514,6 +514,4 @@ These endpoints should be implemented
 | Users                 | DELETE | Delete user by id   | Users/{id}                            | x      |
 | Users                 | GET    | Get user stats      | Users/stats                           | x      |
 | Users                 | GET    | Get last 10 matches | Users/last-ten-matches                | x      |
-| Users                 | GET    | Get history         | Users/history                         |        |
-
-You can now import Markdown table code directly using File/Paste table data... dialog.
+| Users                 | GET    | Get history         | Users/history                         | x      |
