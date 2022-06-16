@@ -16,12 +16,12 @@ namespace FoosballApi.Services
     public interface IAuthService
     {
         Task<User> Authenticate(string username, string password);
-        // void CreateUser(User user);
+        void CreateUser(User user);
         // bool VerifyEmail(string token);
         // bool VerifyCode(string token, int userId);
         // VerificationModel ForgotPassword(ForgotPasswordRequest model, string origin);
         // bool SaveChanges();
-        // VerificationModel AddVerificationInfo(User user, string origin);
+        VerificationModel AddVerificationInfo(User user, string origin);
         // void ResetPassword(ResetPasswordRequest model);
         string CreateToken(User user);
     }
@@ -61,27 +61,40 @@ namespace FoosballApi.Services
             }
         }
 
-        // public void CreateUser(User user)
-        // {
-        //     if (user == null)
-        //     {
-        //         throw new ArgumentNullException(nameof(user));
-        //     }
-        //     // get random number
-        //     Random rnd = new Random();
-        //     int randomNumber = rnd.Next(1, 99999);
-        //     string passwordHash = BCrypt.Net.BCrypt.HashPassword(user.Password);
-        //     DateTime now = DateTime.Now;
-        //     User tmpUser = new User();
-        //     tmpUser.Email = user.Email;
-        //     tmpUser.Password = passwordHash;
-        //     tmpUser.FirstName = user.FirstName;
-        //     tmpUser.LastName = user.LastName;
-        //     tmpUser.Created_at = now;
-        //     tmpUser.PhotoUrl = "https://avatars.dicebear.com/api/personas/:" + randomNumber + ".png";
-        //     _context.Users.Add(tmpUser);
-        //     _context.SaveChanges();
-        // }
+        public void CreateUser(User user)
+        {
+            if (user == null)
+            {
+                throw new ArgumentNullException(nameof(user));
+            }
+            // get random number
+            Random rnd = new Random();
+            int randomNumber = rnd.Next(1, 99999);
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(user.Password);
+            DateTime now = DateTime.Now;
+            User tmpUser = new User();
+            tmpUser.Email = user.Email;
+            tmpUser.Password = passwordHash;
+            tmpUser.FirstName = user.FirstName;
+            tmpUser.LastName = user.LastName;
+            tmpUser.Created_at = now;
+            tmpUser.PhotoUrl = "https://avatars.dicebear.com/api/personas/:" + randomNumber + ".png";
+            
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"INSERT INTO Users (email, password, first_name, last_name, created_at, photo_url)
+                    VALUES (@email, @password, @first_name, @last_name, @created_at, @photo_url)",
+                    new {
+                        email = tmpUser.Email, 
+                        password = tmpUser.Password, 
+                        first_name = tmpUser.FirstName, 
+                        last_name = tmpUser.LastName, 
+                        created_at = tmpUser.Created_at, 
+                        photo_url = tmpUser.PhotoUrl
+                    });
+            }
+        }
 
         // public VerificationModel ForgotPassword(ForgotPasswordRequest model, string origin)
         // {
@@ -149,17 +162,24 @@ namespace FoosballApi.Services
         //     return hasVerified;
         // }
 
-        // public VerificationModel AddVerificationInfo(User user, string origin)
-        // {
-        //     VerificationModel vModel = new VerificationModel();
-        //     vModel.UserId = user.Id;
-        //     vModel.VerificationToken = RandomTokenString();
-        //     vModel.HasVerified = false;
-        //     _context.Verifications.Add(vModel);
-        //     _context.SaveChanges();
+        public VerificationModel AddVerificationInfo(User user, string origin)
+        {
+            VerificationModel vModel = new VerificationModel();
+            vModel.UserId = user.Id;
+            vModel.VerificationToken = RandomTokenString();
+            vModel.HasVerified = false;
+            
+            // using dapper
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"INSERT INTO Verifications (user_id, verification_token, has_verified)
+                    VALUES (@user_id, @verification_token, @has_verified)",
+                    new {user_id = user.Id, verification_token = vModel.VerificationToken, has_verified = vModel.HasVerified});
+            }
 
-        //     return vModel;
-        // }
+            return vModel;
+        }
 
         private string RandomTokenString()
         {

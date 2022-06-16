@@ -56,33 +56,33 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpPost("register")]
-        // [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status201Created)]
-        // public ActionResult<UserReadDto> CreateUser(UserCreateDto userCreateDto)
-        // {
-        //     try
-        //     {
-        //         var userModel = _mapper.Map<User>(userCreateDto);
-        //         var user = _userService.GetUserByEmail(userCreateDto.Email);
+        [HttpPost("register")]
+        [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status201Created)]
+        public ActionResult<UserReadDto> CreateUser(UserCreateDto userCreateDto)
+        {
+            try
+            {
+                var userModel = _mapper.Map<User>(userCreateDto);
+                var user = _userService.GetUserByEmail(userCreateDto.Email);
 
-        //         if (user != null)
-        //             return Conflict();
+                if (user != null)
+                    return Conflict();
 
-        //         _authService.CreateUser(userModel);
-        //         var tmpUser = _userService.GetUserByEmail(userCreateDto.Email);
-        //         var vModel = _authService.AddVerificationInfo(tmpUser, Request.Headers["origin"]);
+                _authService.CreateUser(userModel);
+                var tmpUser = _userService.GetUserByEmail(userCreateDto.Email);
+                var vModel = _authService.AddVerificationInfo(tmpUser, Request.Headers["origin"]);
 
-        //         var userReadDto = _mapper.Map<UserReadDto>(tmpUser);
+                var userReadDto = _mapper.Map<UserReadDto>(tmpUser);
 
-        //         _emailService.SendVerificationEmail(vModel, tmpUser, Request.Headers["origin"]);
+                _emailService.SendVerificationEmail(vModel, tmpUser, Request.Headers["origin"]);
 
-        //         return CreatedAtRoute(nameof(UsersController.GetUserById), new { Id = userReadDto.Id }, userReadDto);
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+                return CreatedAtRoute(nameof(UsersController.GetUserById), new { Id = userReadDto.Id }, userReadDto);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         // [HttpPost("verify-email")]
         // [ProducesResponseType(typeof(UserVerify), StatusCodes.Status200OK)]

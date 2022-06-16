@@ -447,7 +447,7 @@ These endpoints should be implemented
 | Controller            | method | Name                | PATH                                  | Status |
 | --------------------- | ------ | ------------------- | ------------------------------------- | ------ |
 | Auth                  | POST   | Login               | Auth/login                            | x      |
-| Auth                  | POST   | register            | Auth/register                         |        |
+| Auth                  | POST   | register            | Auth/register                         | x      |
 | Auth                  | POST   | verify-email        | Auth/verify-email                     |        |
 | Auth                  | POST   | forgot-password     | Auth/forgot-password                  |        |
 | Auth                  | POST   | reset-password      | Auth/reset-password                   |        |

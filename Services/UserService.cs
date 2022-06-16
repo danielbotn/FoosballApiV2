@@ -23,6 +23,7 @@ namespace FoosballApi.Services
         IEnumerable<Match> GetLastTenMatchesByUserId(int userId);
         IEnumerable<Match> GetPagnatedHistory(int userId, int pageNumber, int pageSize);
         IEnumerable<Match> OrderMatchesByDescending(IEnumerable<Match> lastTen);
+        User GetUserByEmail(string email);
     }
 
     public class UserService : IUserService
@@ -1363,14 +1364,6 @@ namespace FoosballApi.Services
             return FilterLastTen(result);
         }
 
-        /* 
-        var freehandMatches = _context.FreehandMatches
-            .Where(x => (x.PlayerOneId == userId || x.PlayerTwoId == userId) && x.GameFinished == true)
-            .OrderByDescending(x => x.Id)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-        */
         private List<FreehandMatchModel> PagnateFreehandMatches(int userId, int pageNumber, int pageSize)
         {
             List<FreehandMatchModel> result = new();
@@ -1710,7 +1703,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private string GetOpponentOneFirstNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        private string GetOpponentOneFirstNameUserLastTen(int userId, int opponentId)
         {
             string result = "";
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -1726,7 +1719,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private string GetOpponentOneLastNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        private string GetOpponentOneLastNameUserLastTen(int userId, int opponentId)
         {
             string result = "";
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -1742,7 +1735,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private string GetOpponentOnePhotUrlUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        private string GetOpponentOnePhotUrlUserLastTen(int userId, int opponentId)
         {
             string result = "";
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -1758,7 +1751,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private string GetOpponentTwoFirstNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        private string GetOpponentTwoFirstNameUserLastTen(int userId, int opponentId)
         {
             string result = "";
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -1774,7 +1767,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private string GetOpponentTwoLastNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        private string GetOpponentTwoLastNameUserLastTen(int userId, int opponentId)
         {
             string result = "";
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -1790,7 +1783,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private string GetOpponentTwoPhotoUrlUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        private string GetOpponentTwoPhotoUrlUserLastTen(int userId, int opponentId)
         {
             string result = "";
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -1830,13 +1823,13 @@ namespace FoosballApi.Services
                 userLastTenItem.OpponentId = opponentId;
                 userLastTenItem.OpponentTwoId = oponentTwoId;
 
-                userLastTenItem.OpponentOneFirstName = GetOpponentOneFirstNameUserLastTen(userId, match, opponentId);
-                userLastTenItem.OpponentOneLastName = GetOpponentOneLastNameUserLastTen(userId, match, opponentId);
-                userLastTenItem.OpponentOnePhotoUrl = GetOpponentOnePhotUrlUserLastTen(userId, match, opponentId);
+                userLastTenItem.OpponentOneFirstName = GetOpponentOneFirstNameUserLastTen(userId, opponentId);
+                userLastTenItem.OpponentOneLastName = GetOpponentOneLastNameUserLastTen(userId, opponentId);
+                userLastTenItem.OpponentOnePhotoUrl = GetOpponentOnePhotUrlUserLastTen(userId, opponentId);
 
-                userLastTenItem.OpponentTwoFirstName = GetOpponentTwoFirstNameUserLastTen(userId, match, (int)oponentTwoId);
-                userLastTenItem.OpponentTwoLastName = GetOpponentTwoLastNameUserLastTen(userId, match, (int)oponentTwoId);
-                userLastTenItem.OpponentTwoPhotoUrl = GetOpponentTwoPhotoUrlUserLastTen(userId, match, (int)oponentTwoId);
+                userLastTenItem.OpponentTwoFirstName = GetOpponentTwoFirstNameUserLastTen(userId, (int)oponentTwoId);
+                userLastTenItem.OpponentTwoLastName = GetOpponentTwoLastNameUserLastTen(userId, (int)oponentTwoId);
+                userLastTenItem.OpponentTwoPhotoUrl = GetOpponentTwoPhotoUrlUserLastTen(userId, (int)oponentTwoId);
                 userLastTenItem.UserScore = (int)match.PlayerOneTeamA == userId || (int)match.PlayerTwoTeamA == userId ? (int)match.TeamAScore : (int)match.TeamBScore;
                 userLastTenItem.OpponentUserOrTeamScore = (int)match.PlayerOneTeamA != userId && (int)match.PlayerTwoTeamA != userId ? (int)match.TeamAScore : (int)match.TeamBScore;
                 userLastTenItem.DateOfGame = (DateTime)match.EndTime;
@@ -2311,6 +2304,20 @@ namespace FoosballApi.Services
             }
 
             return result;
+        }
+
+        public User GetUserByEmail(string email)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var user = conn.QueryFirstOrDefault<User>(
+                    @"
+                    SELECT id, email as Email, first_name as FirstName, last_name as LastName, created_at as Created_at, current_organisation_id as CurrentOrganisationId, photo_url as PhotoUrl
+                    FROM users
+                    WHERE email = @email",
+                    new { email });
+                return user;
+            }
         }
     }
 }
