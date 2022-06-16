@@ -159,5 +159,25 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("stats/history")]
+        [ProducesResponseType(typeof(IEnumerable<Match>), StatusCodes.Status200OK)]
+        public ActionResult<IEnumerable<Match>> History([FromQuery] PaginationFilter filter)
+        {
+            try
+            {
+                var validFilter = new PaginationFilter(filter.PageNumber, filter.PageSize);
+                string userId = User.Identity.Name;
+
+                var data = _userService.GetPagnatedHistory(int.Parse(userId), validFilter.PageNumber, validFilter.PageSize);
+                var order = _userService.OrderMatchesByDescending(data);
+
+                return Ok(order);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

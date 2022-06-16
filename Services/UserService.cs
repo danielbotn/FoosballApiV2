@@ -5,6 +5,7 @@ using Dapper;
 using FoosballApi.Enums;
 using FoosballApi.Models;
 using FoosballApi.Models.DoubleLeagueMatches;
+using FoosballApi.Models.DoubleLeaguePlayers;
 using FoosballApi.Models.Matches;
 using FoosballApi.Models.Users;
 using Npgsql;
@@ -20,6 +21,8 @@ namespace FoosballApi.Services
         void DeleteUser(User user);
         Task<UserStats> GetUserStats(int userId);
         IEnumerable<Match> GetLastTenMatchesByUserId(int userId);
+        IEnumerable<Match> GetPagnatedHistory(int userId, int pageNumber, int pageSize);
+        IEnumerable<Match> OrderMatchesByDescending(IEnumerable<Match> lastTen);
     }
 
     public class UserService : IUserService
@@ -1360,5 +1363,954 @@ namespace FoosballApi.Services
             return FilterLastTen(result);
         }
 
+        /* 
+        var freehandMatches = _context.FreehandMatches
+            .Where(x => (x.PlayerOneId == userId || x.PlayerTwoId == userId) && x.GameFinished == true)
+            .OrderByDescending(x => x.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+        */
+        private List<FreehandMatchModel> PagnateFreehandMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<FreehandMatchModel> result = new();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var freehandMatches = conn.Query<FreehandMatchModel>(
+                    @"
+                    SELECT id, player_one_id as PlayerOneId, player_two_id as PlayerTwoId, player_one_score as PlayerOneScore, player_two_score as PlayerTwoScore, end_time as EndTime, game_finished as GameFinished
+                    FROM freehand_matches
+                    WHERE (player_one_id = @userId OR player_two_id = @userId) AND game_finished = true
+                    ORDER BY id DESC
+                    OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY",
+                    new { userId, offset = (pageNumber - 1) * pageSize, pageSize });
+                result = freehandMatches.ToList();
+            }
+            return result;
+        }
+
+        private string GetPagnatedFreehandOpponentOneFirstName(int userId, FreehandMatchModel match)
+        {
+            string result = "";
+            if (match.PlayerOneId == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneFirstName = conn.QueryFirst<User>(
+                        @"
+                        SELECT first_name as FirstName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoId });
+                    result = opponentOneFirstName.FirstName;
+                }
+            }
+            else
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneFirstName = conn.QueryFirst<User>(
+                        @"
+                        SELECT first_name as FirstName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneId });
+                    result = opponentOneFirstName.FirstName;
+                }
+            }
+            return result;
+        }
+
+        private string GetPagnatedFreehandOpponentOneLastName(int userId, FreehandMatchModel match)
+        {
+            string result = "";
+            if (match.PlayerOneId == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneLastName = conn.QueryFirst<User>(
+                        @"
+                        SELECT last_name as LastName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoId });
+                    result = opponentOneLastName.LastName;
+                }
+            }
+            else
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneLastName = conn.QueryFirst<User>(
+                        @"
+                        SELECT last_name as LastName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneId });
+                    result = opponentOneLastName.LastName;
+                }
+            }
+            return result;
+        }
+
+        private string GetPagnatedFreehandOpponentOnePhotoUrl(int userId, FreehandMatchModel match)
+        {
+            string result = "";
+            if (match.PlayerOneId == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                        @"
+                        SELECT photo_url as PhotoUrl
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoId });
+                    result = opponentOnePhotoUrl.PhotoUrl;
+                }
+            }
+            else
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                        @"
+                        SELECT photo_url as PhotoUrl
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneId });
+                    result = opponentOnePhotoUrl.PhotoUrl;
+                }
+            }
+            return result;
+        }
+
+        private List<Match> GetPagnatedFreehandMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<Match> result = new List<Match>();
+
+            var freehandMatches = PagnateFreehandMatches(userId, pageNumber, pageSize);
+
+            foreach (var match in freehandMatches)
+            {
+                Match userLastTenItem = new Match();
+                userLastTenItem.TypeOfMatch = ETypeOfMatch.FreehandMatch;
+                userLastTenItem.TypeOfMatchName = ETypeOfMatch.FreehandMatch.ToString();
+                userLastTenItem.UserId = userId;
+                userLastTenItem.TeamMateId = null;
+                userLastTenItem.MatchId = match.Id;
+                userLastTenItem.OpponentId = match.PlayerOneId == userId ? match.PlayerTwoId : match.PlayerOneId;
+                userLastTenItem.OpponentTwoId = null;
+                userLastTenItem.OpponentOneFirstName = GetPagnatedFreehandOpponentOneFirstName(userId, match);
+                userLastTenItem.OpponentOneLastName = GetPagnatedFreehandOpponentOneLastName(userId, match);
+                userLastTenItem.OpponentOnePhotoUrl = GetPagnatedFreehandOpponentOnePhotoUrl(userId, match);
+                userLastTenItem.OpponentTwoFirstName = null;
+                userLastTenItem.OpponentTwoLastName = null;
+                userLastTenItem.UserScore = match.PlayerOneId == userId ? match.PlayerOneScore : match.PlayerTwoScore;
+                userLastTenItem.OpponentUserOrTeamScore = match.PlayerOneId == userId ? match.PlayerTwoScore : match.PlayerOneScore;
+                userLastTenItem.DateOfGame = (DateTime)match.EndTime;
+
+                result.Add(userLastTenItem);
+            }
+
+            return result;
+        }
+
+        private List<FreehandDoubleMatchModel> PagnateFreehandDoubleMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<FreehandDoubleMatchModel> result = new List<FreehandDoubleMatchModel>();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var freehandDoubleMatches = conn.Query<FreehandDoubleMatchModel>(
+                    @"
+                    SELECT id, player_one_team_a as PlayerOneTeamA, player_two_team_a as PlayerTwoTeamA, player_one_team_b as PlayerOneTeamB,
+                    player_two_team_b as PlayerTwoTeamB, organisation_id as OrganisationId, start_time as StartTime, end_time as EndTime, team_a_score as TeamAScore, team_b_score as TeamBScore,
+                    nickname_team_a as NickNameTeamA, nickname_team_b as NicknameTeamB, up_to as UpTo, game_finished as GameFinished, game_paused as GamePaused
+                    FROM freehand_double_matches
+                    WHERE (player_one_team_a = @userId OR player_two_team_a = @userId) AND game_finished = true
+                    ORDER BY id DESC
+                    OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY",
+                    new { userId = userId, offset = (pageNumber - 1) * pageSize, pageSize = pageSize });
+                result = freehandDoubleMatches.ToList();
+            }
+            return result;
+        }
+
+        private string GetTeamMateFirstNameUserLastTen(int userId, FreehandDoubleMatchModel match)
+        {
+            string result = "";
+            if (match.PlayerOneTeamA == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneFirstName = conn.QueryFirst<User>(
+                        @"
+                        SELECT first_name as FirstName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoTeamA });
+                    result = opponentOneFirstName.FirstName;
+                }
+            }
+            else if (match.PlayerOneTeamB == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneFirstName = conn.QueryFirst<User>(
+                        @"
+                        SELECT first_name as FirstName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoTeamB });
+                    result = opponentOneFirstName.FirstName;
+                }
+            }
+            else if (match.PlayerTwoTeamA == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneFirstName = conn.QueryFirst<User>(
+                        @"
+                        SELECT first_name as FirstName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneTeamA });
+                    result = opponentOneFirstName.FirstName;
+                }
+            }
+            else if (match.PlayerTwoTeamB == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneFirstName = conn.QueryFirst<User>(
+                        @"
+                        SELECT first_name as FirstName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneTeamB });
+                    result = opponentOneFirstName.FirstName;
+                }
+            }
+            return result;
+        }
+
+        private string GetTeamMateLastNameUserLastTen(int userId, FreehandDoubleMatchModel match)
+        {
+            string result = "";
+            if (match.PlayerOneTeamA == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneLastName = conn.QueryFirst<User>(
+                        @"
+                        SELECT last_name as LastName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoTeamA });
+                    result = opponentOneLastName.LastName;
+                }
+            }
+            else if (match.PlayerOneTeamB == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneLastName = conn.QueryFirst<User>(
+                        @"
+                        SELECT last_name as LastName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoTeamB });
+                    result = opponentOneLastName.LastName;
+                }
+            }
+            else if (match.PlayerTwoTeamA == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneLastName = conn.QueryFirst<User>(
+                        @"
+                        SELECT last_name as LastName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneTeamA });
+                    result = opponentOneLastName.LastName;
+                }
+            }
+            else if (match.PlayerTwoTeamB == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOneLastName = conn.QueryFirst<User>(
+                        @"
+                        SELECT last_name as LastName
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneTeamB });
+                    result = opponentOneLastName.LastName;
+                }
+            }
+            return result;
+        }
+
+        private string GetTeamMatePhotoUrlUserLastTen(int userId, FreehandDoubleMatchModel match)
+        {
+            string result = "";
+            if (match.PlayerOneTeamA == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                        @"
+                        SELECT photo_url as PhotoUrl
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoTeamA });
+                    result = opponentOnePhotoUrl.PhotoUrl;
+                }
+            }
+            else if (match.PlayerOneTeamB == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                        @"
+                        SELECT photo_url as PhotoUrl
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerTwoTeamB });
+                    result = opponentOnePhotoUrl.PhotoUrl;
+                }
+            }
+            else if (match.PlayerTwoTeamA == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                        @"
+                        SELECT photo_url as PhotoUrl
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneTeamA });
+                    result = opponentOnePhotoUrl.PhotoUrl;
+                }
+            }
+            else if (match.PlayerTwoTeamB == userId)
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                        @"
+                        SELECT photo_url as PhotoUrl
+                        FROM users
+                        WHERE id = @opponentId",
+                        new { opponentId = match.PlayerOneTeamB });
+                    result = opponentOnePhotoUrl.PhotoUrl;
+                }
+            }
+            return result;
+        }
+
+        private string GetOpponentOneFirstNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentOneFirstName = conn.QueryFirst<User>(
+                    @"
+                    SELECT first_name as FirstName
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentOneFirstName.FirstName;
+            }
+            return result;
+        }
+
+        private string GetOpponentOneLastNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentOneLastName = conn.QueryFirst<User>(
+                    @"
+                    SELECT last_name as LastName
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentOneLastName.LastName;
+            }
+            return result;
+        }
+
+        private string GetOpponentOnePhotUrlUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                    @"
+                    SELECT photo_url as PhotoUrl
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentOnePhotoUrl.PhotoUrl;
+            }
+            return result;
+        }
+
+        private string GetOpponentTwoFirstNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentTwoFirstName = conn.QueryFirst<User>(
+                    @"
+                    SELECT first_name as FirstName
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentTwoFirstName.FirstName;
+            }
+            return result;
+        }
+
+        private string GetOpponentTwoLastNameUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentTwoLastName = conn.QueryFirst<User>(
+                    @"
+                    SELECT last_name as LastName
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentTwoLastName.LastName;
+            }
+            return result;
+        }
+
+        private string GetOpponentTwoPhotoUrlUserLastTen(int userId, FreehandDoubleMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentTwoPhotoUrl = conn.QueryFirst<User>(
+                    @"
+                    SELECT photo_url as PhotoUrl
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentTwoPhotoUrl.PhotoUrl;
+            }
+            return result;
+        }
+
+        private List<Match> GetPagnatedFreehandDoubleMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<Match> result = new List<Match>();
+
+            var freehandDoubleMatches = PagnateFreehandDoubleMatches(userId, pageNumber, pageSize);
+
+            foreach (var match in freehandDoubleMatches)
+            {
+                Match userLastTenItem = new Match();
+                int opponentId = match.PlayerOneTeamA != userId || match.PlayerTwoTeamA != userId ? match.PlayerOneTeamB : match.PlayerOneTeamA;
+                int? oponentTwoId = match.PlayerOneTeamA != userId || match.PlayerTwoTeamA != userId ? match.PlayerTwoTeamB : match.PlayerTwoTeamA;
+
+                userLastTenItem.TypeOfMatch = ETypeOfMatch.DoubleFreehandMatch;
+                userLastTenItem.TypeOfMatchName = ETypeOfMatch.DoubleFreehandMatch.ToString();
+                userLastTenItem.UserId = userId;
+                userLastTenItem.TeamMateId = userId == match.PlayerOneTeamA ? match.PlayerTwoTeamA : userId == match.PlayerOneTeamB ? match.PlayerTwoTeamB :
+                                            userId == match.PlayerTwoTeamA ? match.PlayerOneTeamA : userId == match.PlayerTwoTeamB ? match.PlayerOneTeamB : null;
+                userLastTenItem.TeamMateFirstName = GetTeamMateFirstNameUserLastTen(userId, match) != "" ? GetTeamMateFirstNameUserLastTen(userId, match) : null;
+                userLastTenItem.TeamMateLastName = GetTeamMateLastNameUserLastTen(userId, match) != "" ? GetTeamMateLastNameUserLastTen(userId, match) : null;
+                userLastTenItem.TeamMatePhotoUrl = GetTeamMatePhotoUrlUserLastTen(userId, match) != "" ? GetTeamMatePhotoUrlUserLastTen(userId, match) : null;
+                userLastTenItem.MatchId = match.Id;
+                userLastTenItem.OpponentId = opponentId;
+                userLastTenItem.OpponentTwoId = oponentTwoId;
+
+                userLastTenItem.OpponentOneFirstName = GetOpponentOneFirstNameUserLastTen(userId, match, opponentId);
+                userLastTenItem.OpponentOneLastName = GetOpponentOneLastNameUserLastTen(userId, match, opponentId);
+                userLastTenItem.OpponentOnePhotoUrl = GetOpponentOnePhotUrlUserLastTen(userId, match, opponentId);
+
+                userLastTenItem.OpponentTwoFirstName = GetOpponentTwoFirstNameUserLastTen(userId, match, (int)oponentTwoId);
+                userLastTenItem.OpponentTwoLastName = GetOpponentTwoLastNameUserLastTen(userId, match, (int)oponentTwoId);
+                userLastTenItem.OpponentTwoPhotoUrl = GetOpponentTwoPhotoUrlUserLastTen(userId, match, (int)oponentTwoId);
+                userLastTenItem.UserScore = (int)match.PlayerOneTeamA == userId || (int)match.PlayerTwoTeamA == userId ? (int)match.TeamAScore : (int)match.TeamBScore;
+                userLastTenItem.OpponentUserOrTeamScore = (int)match.PlayerOneTeamA != userId && (int)match.PlayerTwoTeamA != userId ? (int)match.TeamAScore : (int)match.TeamBScore;
+                userLastTenItem.DateOfGame = (DateTime)match.EndTime;
+
+                result.Add(userLastTenItem);
+            }
+
+            return result;
+        }
+
+        private List<SingleLeagueMatchModel> PagnateSingleLeagueMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<SingleLeagueMatchModel> result = new List<SingleLeagueMatchModel>();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var singleLeagueMatches = conn.Query<SingleLeagueMatchModel>(
+                    @"
+                    SELECT *
+                    FROM single_league_matches
+                    WHERE (player_one = @userId OR player_two = @userId) AND match_ended != null AND match_ended != false
+                    ORDER BY id DESC
+                    LIMIT @pageSize
+                    OFFSET @pageNumber",
+                    new { userId, pageNumber, pageSize });
+                result = singleLeagueMatches.ToList();
+            }
+            return result;
+        }
+
+        private string GetOpponentOneFirstNameSingleLeaguePagnation(int userId, SingleLeagueMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentOneFirstName = conn.QueryFirst<User>(
+                    @"
+                    SELECT first_name as FirstName
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentOneFirstName.FirstName;
+            }
+            return result;
+        }
+
+        private string GetOpponetOneLastNameSingleLeaguePagnation(int userId, SingleLeagueMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentOneLastName = conn.QueryFirst<User>(
+                    @"
+                    SELECT last_name as LastName
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentOneLastName.LastName;
+            }
+            return result;
+        }
+
+        private string GetOpponetOnePhotoUrlSingleLeaguePagnation(int userId, SingleLeagueMatchModel match, int opponentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentOnePhotoUrl = conn.QueryFirst<User>(
+                    @"
+                    SELECT photo_url as PhotoUrl
+                    FROM users
+                    WHERE id = @opponentId",
+                    new { opponentId });
+                result = opponentOnePhotoUrl.PhotoUrl;
+            }
+            return result;
+        }
+
+        private List<Match> GetPagnatedSingleLeagueMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<Match> userLastTen = new List<Match>();
+
+            var singleLeagueMatches = PagnateSingleLeagueMatches(userId, pageNumber, pageSize);
+
+            foreach (var match in singleLeagueMatches)
+            {
+                int oponentId = match.PlayerOne == userId ? match.PlayerTwo : match.PlayerOne;
+                Match userLastTenItem = new Match();
+                userLastTenItem.TypeOfMatch = ETypeOfMatch.SingleLeagueMatch;
+                userLastTenItem.TypeOfMatchName = ETypeOfMatch.SingleLeagueMatch.ToString();
+                userLastTenItem.UserId = userId;
+                userLastTenItem.TeamMateId = null;
+                userLastTenItem.TeamMateFirstName = null;
+                userLastTenItem.TeamMateLastName = null;
+                userLastTenItem.MatchId = match.Id;
+                userLastTenItem.OpponentId = oponentId;
+                userLastTenItem.OpponentTwoId = null;
+                userLastTenItem.OpponentOneFirstName = GetOpponentOneFirstNameSingleLeaguePagnation(userId, match, oponentId);
+                userLastTenItem.OpponentOneLastName = GetOpponetOneLastNameSingleLeaguePagnation(userId, match, oponentId);
+                userLastTenItem.OpponentOnePhotoUrl = GetOpponetOnePhotoUrlSingleLeaguePagnation(userId, match, oponentId);
+                userLastTenItem.OpponentTwoFirstName = null;
+                userLastTenItem.OpponentTwoLastName = null;
+                userLastTenItem.UserScore = userId == match.PlayerOne ? (int)match.PlayerOneScore : (int)match.PlayerTwoScore;
+                userLastTenItem.OpponentUserOrTeamScore = userId == match.PlayerOne ? (int)match.PlayerTwoScore : (int)match.PlayerOneScore;
+                userLastTenItem.DateOfGame = (DateTime)match.EndTime;
+                userLastTenItem.LeagueId = match.LeagueId;
+                userLastTen.Add(userLastTenItem);
+            }
+
+            return userLastTen;
+        }
+
+        private List<int> GetTeamIdsDataDoubleLeaguePagnation(int userId, int pageNumber, int pageSize)
+        {
+            List<int> teamIdsData = new List<int>();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamIds = conn.Query<int>(
+                    @"
+                    SELECT double_league_team_id as TeamId
+                    FROM double_league_players
+                    WHERE user_id = @userId
+                    ORDER BY id DESC
+                    LIMIT @pageSize
+                    OFFSET @pageNumber",
+                    new { userId, pageNumber, pageSize });
+                teamIdsData = teamIds.ToList();
+            }
+            return teamIdsData;
+        }
+
+        private List<DoubleLeagueMatchModel> GetDoubleLeagueMatchesForPagnation(int item)
+        {
+            List<DoubleLeagueMatchModel> result = new List<DoubleLeagueMatchModel>();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var doubleLeagueMatches = conn.Query<DoubleLeagueMatchModel>(
+                    @"
+                    SELECT id, team_one_id as TeamOneId, team_two_id as TeamTwoId, league_id as LeagueId,
+                    start_time as StartTime, end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore,
+                    match_started as MatchStarted, match_ended as MatchEnded, match_paused as MatchPaused
+                    FROM double_league_matches
+                    WHERE (team_one_id = @item OR team_two_id = @item) && end_time != null
+                    ORDER BY id DESC");
+                result = doubleLeagueMatches.ToList();
+            }
+            return result;
+        }
+
+        private int GetTeamMateIdDoubleLeagueMatchesPagnation(int userId, DoubleLeagueMatchModel item)
+        {
+            int result = 0;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamMateId = conn.QueryFirst<int>(
+                    @"
+                    SELECT user_id as UserId
+                    FROM double_league_players
+                    WHERE double_league_team_id = @item AND user_id != @userId",
+                    new { userId, item.TeamOneId });
+                result = teamMateId;
+            }
+            return result;
+        }
+
+        private int GetTeamMateITeamTwoIddDoubleLeagueMatchesPagnation(int userId, DoubleLeagueMatchModel item)
+        {
+            int result = 0;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamMateId = conn.QueryFirst<int>(
+                    @"
+                    SELECT user_id as UserId
+                    FROM double_league_players
+                    WHERE double_league_team_id = @item AND user_id != @userId",
+                    new { userId, item.TeamTwoId });
+                result = teamMateId;
+            }
+            return result;
+        }
+
+        private List<DoubleLeaguePlayerModel> GetOppoentDateDoubleLeagueMatchesHelper(int userId, DoubleLeagueMatchModel match)
+        {
+            List<DoubleLeaguePlayerModel> opponentData = new List<DoubleLeaguePlayerModel>();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentDataQuery = conn.Query<DoubleLeaguePlayerModel>(
+                    @"
+                    SELECT id, user_id as UserId
+                    FROM double_league_players
+                    WHERE double_league_team_id = @item",
+                    new { item = match.TeamTwoId });
+                opponentData = opponentDataQuery.ToList();
+            }
+            return opponentData;
+        }
+
+        private List<DoubleLeaguePlayerModel> GetOppoentDataTeamOneIdDoubleLeagueMatchesHelper(int userId, DoubleLeagueMatchModel match)
+        {
+            List<DoubleLeaguePlayerModel> opponentData = new List<DoubleLeaguePlayerModel>();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentDataQuery = conn.Query<DoubleLeaguePlayerModel>(
+                    @"
+                    SELECT id, user_id as UserId
+                    FROM double_league_players
+                    WHERE double_league_team_id = @item",
+                    new { item = match.TeamOneId });
+                opponentData = opponentDataQuery.ToList();
+            }
+            return opponentData;
+        }
+
+        private string GetTeamMateFirstNameDoubleLeaugeMatches(int userId, int teamMateId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamMateFirstName = conn.QueryFirst<string>(
+                    @"
+                    SELECT first_name as FirstName
+                    FROM users
+                    WHERE id = @teamMateId",
+                    new { teamMateId });
+                result = teamMateFirstName;
+            }
+            return result;
+        }
+
+        private string GetTeamMateLastNameDoubleLeaugeMatches(int userId, int teamMateId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamMateLastName = conn.QueryFirst<string>(
+                    @"
+                    SELECT last_name as LastName
+                    FROM users
+                    WHERE id = @teamMateId",
+                    new { teamMateId });
+                result = teamMateLastName;
+            }
+            return result;
+        }
+
+        private string GetTeamMatePhotUrlDoubleLeaugeMatches(int userId, int teamMateId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamMatePhotoUrl = conn.QueryFirst<string>(
+                    @"
+                    SELECT photo_url as PhotoUrl
+                    FROM users
+                    WHERE id = @teamMateId",
+                    new { teamMateId });
+                result = teamMatePhotoUrl;
+            }
+            return result;
+        }
+
+        private string GetOpponentFirstNameDoubleLeaugeMatches(int userId, int oppoentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentFirstName = conn.QueryFirst<string>(
+                    @"
+                    SELECT first_name as FirstName
+                    FROM users
+                    WHERE id = @oppoentId",
+                    new { oppoentId });
+                result = opponentFirstName;
+            }
+            return result;
+        }
+
+        private string GetOpponentLastNameDoubleLeaugeMatches(int userId, int oppoentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentLastName = conn.QueryFirst<string>(
+                    @"
+                    SELECT last_name as LastName
+                    FROM users
+                    WHERE id = @oppoentId",
+                    new { oppoentId });
+                result = opponentLastName;
+            }
+            return result;
+        }
+
+        private string GetOpponentOnePhotoUrlDoubleLeaugeMatches(int userId, int oppoentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentPhotoUrl = conn.QueryFirst<string>(
+                    @"
+                    SELECT photo_url as PhotoUrl
+                    FROM users
+                    WHERE id = @oppoentId",
+                    new { oppoentId });
+                result = opponentPhotoUrl;
+            }
+            return result;
+        }
+
+        private string GetOpponentTwoFirstNameDoubleLeaugeMatches(int userId, int oppoentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentTwoFirstName = conn.QueryFirst<string>(
+                    @"
+                    SELECT first_name as FirstName
+                    FROM users
+                    WHERE id = @oppoentId",
+                    new { oppoentId });
+                result = opponentTwoFirstName;
+            }
+            return result;
+        }
+
+        private string GetOpponentTwoLastNameDoubleLeaugeMatches(int userId, int oppoentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentTwoLastName = conn.QueryFirst<string>(
+                    @"
+                    SELECT last_name as LastName
+                    FROM users
+                    WHERE id = @oppoentId",
+                    new { oppoentId });
+                result = opponentTwoLastName;
+            }
+            return result;
+        }
+
+        private string GetOpponentTwoPhotoUrlDoubleLeaugeMatches(int userId, int oppoentId)
+        {
+            string result = "";
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var opponentPhotoUrl = conn.QueryFirst<string>(
+                    @"
+                    SELECT photo_url as PhotoUrl
+                    FROM users
+                    WHERE id = @oppoentId",
+                    new { oppoentId });
+                result = opponentPhotoUrl;
+            }
+            return result;
+        }
+
+        private List<Match> GenerateDoubleLeagueMatches(List<DoubleLeagueMatchModel> doubleLeagueMatches, List<int> teamIds, int userId)
+        {
+            List<Match> result = new List<Match>();;
+            foreach (var item in doubleLeagueMatches)
+            {
+                int opponentId;
+                int opponentTwoId;
+                int teamMateId;
+                int userScore;
+                int opponentScore;
+                if (teamIds.Contains(item.TeamOneId))
+                {
+                    teamMateId =  GetTeamMateIdDoubleLeagueMatchesPagnation(userId, item);
+                    var opponentData = GetOppoentDateDoubleLeagueMatchesHelper(userId, item);
+
+                    opponentId = opponentData.First().Id;
+                    opponentTwoId = opponentData.Last().Id;
+                    userScore = (int)item.TeamOneScore;
+                    opponentScore = (int)item.TeamTwoScore;
+                }
+                else
+                {
+                    teamMateId = GetTeamMateITeamTwoIddDoubleLeagueMatchesPagnation(userId, item);
+                        
+                    var opponentData = GetOppoentDataTeamOneIdDoubleLeagueMatchesHelper(userId, item);
+
+                    opponentId = opponentData.First().Id;
+                    opponentTwoId = opponentData.LastOrDefault().Id;
+                    userScore = (int)item.TeamTwoScore;
+                    opponentScore = (int)item.TeamOneScore;
+                }
+
+                Match match = new Match
+                {
+                    TypeOfMatch = ETypeOfMatch.DoubleLeagueMatch,
+                    TypeOfMatchName = ETypeOfMatch.DoubleLeagueMatch.ToString(),
+                    UserId = userId,
+                    TeamMateId = teamMateId,
+                    TeamMateFirstName = GetTeamMateFirstNameDoubleLeaugeMatches(userId, teamMateId),
+                    TeamMateLastName = GetTeamMateLastNameDoubleLeaugeMatches(userId, teamMateId),
+                    TeamMatePhotoUrl = GetTeamMatePhotUrlDoubleLeaugeMatches(userId, teamMateId),
+                    MatchId = item.Id,
+                    OpponentId = opponentId,
+                    OpponentTwoId = null,
+                    OpponentOneFirstName = GetOpponentFirstNameDoubleLeaugeMatches(userId, opponentId),
+                    OpponentOneLastName = GetOpponentLastNameDoubleLeaugeMatches(userId, opponentId),
+                    OpponentOnePhotoUrl = GetOpponentOnePhotoUrlDoubleLeaugeMatches(userId, opponentId),
+                    OpponentTwoFirstName = GetOpponentTwoFirstNameDoubleLeaugeMatches(userId, opponentTwoId),
+                    OpponentTwoLastName = GetOpponentTwoLastNameDoubleLeaugeMatches(userId, opponentTwoId),
+                    OpponentTwoPhotoUrl = GetOpponentTwoPhotoUrlDoubleLeaugeMatches(userId, opponentTwoId),
+                    UserScore = userScore,
+                    OpponentUserOrTeamScore = opponentScore,
+                    DateOfGame = (DateTime)item.EndTime,
+                    LeagueId = item.LeagueId
+                };
+                result.Add(match);
+            }
+
+            return result;
+        }
+
+        private List<Match> GetPagnatedDoubleLeagueMatches(int userId, int pageNumber, int pageSize)
+        {
+            List<Match> result = new List<Match>();
+            List<DoubleLeagueMatchModel> doubleLeagueMatches = new();
+            List<int> teamIds = new();
+
+            List<int> teamIdsData = GetTeamIdsDataDoubleLeaguePagnation(userId, pageNumber, pageSize);
+
+            foreach (var item in teamIdsData)
+            {
+                teamIds.Add(item);
+
+                var dlm = GetDoubleLeagueMatchesForPagnation(item);
+                foreach (var element in dlm)
+                {
+                    doubleLeagueMatches.Add(element);
+                }
+            }
+
+            return GenerateDoubleLeagueMatches(doubleLeagueMatches, teamIds, userId); ;
+        }
+
+        public IEnumerable<Match> OrderMatchesByDescending(IEnumerable<Match> lastTen)
+        {
+            return lastTen.OrderByDescending(x => x.DateOfGame);
+        }
+
+        public IEnumerable<Match> GetPagnatedHistory(int userId, int pageNumber, int pageSize)
+        {
+            List<Match> result = new List<Match>();
+
+            List<Match> freehandMatches = GetPagnatedFreehandMatches(userId, pageNumber, pageSize);
+            List<Match> freehandDoubleMatches = GetPagnatedFreehandDoubleMatches(userId, pageNumber, pageSize);
+            List<Match> singleLeagueMatches = GetPagnatedSingleLeagueMatches(userId, pageNumber, pageSize);
+            List<Match> doubleLeagueMatches = GetPagnatedDoubleLeagueMatches(userId, pageNumber, pageSize);
+
+            foreach (var fm in freehandMatches)
+            {
+                result.Add(fm);
+            }
+
+            foreach (var fdm in freehandDoubleMatches)
+            {
+                result.Add(fdm);
+            }
+
+            foreach (var slm in singleLeagueMatches)
+            {
+                result.Add(slm);
+            }
+
+            foreach (var dlm in doubleLeagueMatches)
+            {
+                result.Add(dlm);
+            }
+
+            return result;
+        }
     }
 }
