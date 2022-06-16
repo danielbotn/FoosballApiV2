@@ -510,9 +510,9 @@ These endpoints should be implemented
 | SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match       |        |
 | Users                 | GET    | Get users           | Users                                 | x      |
 | Users                 | GET    | Get user by id      | Users/{id}                            | x      |
-| Users                 | PATCH  | Update user by id   | Users/{id}                            |        |
-| Users                 | DELETE | Delete user by id   | Users/{id}                            |        |
-| Users                 | GET    | Get user stats      | Users/stats                           |        |
+| Users                 | PATCH  | Update user by id   | Users/{id}                            | x      |
+| Users                 | DELETE | Delete user by id   | Users/{id}                            | x      |
+| Users                 | GET    | Get user stats      | Users/stats                           | x      |
 | Users                 | GET    | Get last 10 matches | Users/last-ten-matches                |        |
 | Users                 | GET    | Get history         | Users/history                         |        |
 

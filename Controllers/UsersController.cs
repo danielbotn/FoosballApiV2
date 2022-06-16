@@ -123,5 +123,23 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("stats")]
+        [ProducesResponseType(typeof(UserStatsReadDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult> GetUserMatchesStats()
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                var data = await _userService.GetUserStats(int.Parse(userId));
+
+                return Ok(_mapper.Map<UserStatsReadDto>(data));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
