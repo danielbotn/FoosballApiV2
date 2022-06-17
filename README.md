@@ -448,7 +448,7 @@ These endpoints should be implemented
 | --------------------- | ------ | ------------------- | ------------------------------------- | ------ |
 | Auth                  | POST   | Login               | Auth/login                            | x      |
 | Auth                  | POST   | register            | Auth/register                         | x      |
-| Auth                  | POST   | verify-email        | Auth/verify-email                     |        |
+| Auth                  | POST   | verify-email        | Auth/verify-email                     | x      |
 | Auth                  | POST   | forgot-password     | Auth/forgot-password                  |        |
 | Auth                  | POST   | reset-password      | Auth/reset-password                   |        |
 | Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                 |        |
