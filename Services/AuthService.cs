@@ -18,7 +18,7 @@ namespace FoosballApi.Services
         Task<User> Authenticate(string username, string password);
         void CreateUser(User user);
         // bool VerifyEmail(string token);
-        // bool VerifyCode(string token, int userId);
+        Task<bool> VerifyCode(string token, int userId);
         // VerificationModel ForgotPassword(ForgotPasswordRequest model, string origin);
         // bool SaveChanges();
         VerificationModel AddVerificationInfo(User user, string origin);
@@ -120,20 +120,41 @@ namespace FoosballApi.Services
         //     return (_context.SaveChanges() >= 0);
         // }
 
-        // public bool VerifyCode(string token, int userId)
-        // {
-        //     var vModel = _context.Verifications.SingleOrDefault(x => x.UserId == userId && x.VerificationToken == token);
-        //     if (vModel == null) return false;
-        //     if (vModel.VerificationToken == token)
-        //     {
-        //         vModel.HasVerified = true;
-        //         vModel.VerificationToken = null;
-        //         _context.Verifications.Update(vModel);
-        //         _context.SaveChanges();
-        //         return true;
-        //     }
-        //     return false;
-        // }
+        private async Task<VerificationModel> GetVerificationModel(int userId, string token)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                return await conn.QueryFirstOrDefaultAsync<VerificationModel>(
+                    @"SELECT id, user_id as UserId, verification_token as VerificationToken, 
+                    password_reset_token as PasswordResetToken, has_verified as HasVerified
+                    FROM Verifications WHERE user_id = @userId AND verification_token = @token",
+                    new { userId, token });
+            }
+
+        }
+
+        private void UpdateVerificationTable(VerificationModel vModel)
+        {
+            string verificationToken = null;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE Verifications SET has_verified = @hasVerified, verification_token = @verificationToken  WHERE id = @id",
+                    new { hasVerified = true, verificationToken = verificationToken, id = vModel.Id });
+            }
+        }
+
+        public async Task<bool> VerifyCode(string token, int userId)
+        {
+            var vModel = await GetVerificationModel(userId, token);
+            if (vModel == null) return false;
+            if (vModel.VerificationToken == token)
+            {
+                UpdateVerificationTable(vModel);
+                return true;
+            }
+            return false;
+        }
 
         // public bool VerifyEmail(string token)
         // {

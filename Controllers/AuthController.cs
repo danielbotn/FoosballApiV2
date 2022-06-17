@@ -84,33 +84,33 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpPost("verify-email")]
-        // [ProducesResponseType(typeof(UserVerify), StatusCodes.Status200OK)]
-        // public IActionResult VerifyEmail(VerifyEmailRequest model)
-        // {
-        //     try
-        //     {
-        //         bool isCodeValid = _authService.VerifyCode(model.Token, model.UserId);
+        [HttpPost("verify-email")]
+        [ProducesResponseType(typeof(UserVerify), StatusCodes.Status200OK)]
+        public async Task<ActionResult> VerifyEmail(VerifyEmailRequest model)
+        {
+            try
+            {
+                bool isCodeValid = await _authService.VerifyCode(model.Token, model.UserId);
 
-        //         if (isCodeValid)
-        //         {
-        //             UserVerify userVerify = new UserVerify
-        //             {
-        //                 Message = "Verification successful, you can now login"
-        //             };
-        //             return Ok(userVerify);
-        //         }
-        //         else
-        //         {
-        //             // return statusCode not allowed with a message
-        //             return StatusCode(StatusCodes.Status403Forbidden, "Verification code is invalid");
-        //         }
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+                if (isCodeValid)
+                {
+                    UserVerify userVerify = new UserVerify
+                    {
+                        Message = "Verification successful, you can now login"
+                    };
+                    return Ok(userVerify);
+                }
+                else
+                {
+                    // return statusCode not allowed with a message
+                    return StatusCode(StatusCodes.Status403Forbidden, "Verification code is invalid");
+                }
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         // [HttpPost("forgot-password")]
         // [ProducesResponseType(typeof(UserForgotPassword), StatusCodes.Status200OK)]

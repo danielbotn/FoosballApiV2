@@ -2312,7 +2312,9 @@ namespace FoosballApi.Services
             {
                 var user = conn.QueryFirstOrDefault<User>(
                     @"
-                    SELECT id, email as Email, first_name as FirstName, last_name as LastName, created_at as Created_at, current_organisation_id as CurrentOrganisationId, photo_url as PhotoUrl
+                    SELECT id, email as Email, first_name as FirstName, last_name as LastName, 
+                    created_at as Created_at, current_organisation_id as CurrentOrganisationId, 
+                    photo_url as PhotoUrl
                     FROM users
                     WHERE email = @email",
                     new { email });
