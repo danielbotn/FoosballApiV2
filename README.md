@@ -453,7 +453,7 @@ These endpoints should be implemented
 | Auth                  | POST   | reset-password      | Auth/reset-password                   |        |
 | Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                 | x      |
 | DoubleLeagueGoals     | GET    | Get match by id     | DoubleLeagueGoals/match/{matchId}     | x      |
-| DoubleLeagueGoals     | GET    | Get match by goalId | DoubleLeagueGoals/{goalId}            |        |
+| DoubleLeagueGoals     | GET    | Get goal by goalId  | DoubleLeagueGoals/{goalId}            | x      |
 | DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}            |        |
 | DoubleLeagueGoals     | POST   | Create new goal     | DoubleLeagueGoals                     |        |
 | DoubleLeagueMatches   | GET    | Get all Dl matches  | DoubleLeagueMatches                   |        |
