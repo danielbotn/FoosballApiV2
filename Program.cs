@@ -65,6 +65,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICmsService, CmsService>();
+builder.Services.AddScoped<IDoubleLeagueGoalService, DoubleLeagueGoalService>();
+builder.Services.AddScoped<IDoubleLeaugeMatchService, DoubleLeaugeMatchService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
