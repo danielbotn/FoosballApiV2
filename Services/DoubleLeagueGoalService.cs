@@ -7,6 +7,7 @@ using Dapper;
 using FoosballApi.Dtos.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueMatches;
+using FoosballApi.Models.DoubleLeaguePlayers;
 using Npgsql;
 
 namespace FoosballApi.Services
@@ -14,8 +15,8 @@ namespace FoosballApi.Services
     public interface IDoubleLeagueGoalService
     {
         Task<IEnumerable<DoubleLeagueGoalExtended>> GetAllDoubleLeagueGoalsByMatchId(int matchId);
-        // Task<DoubleLeagueGoalDapper> GetDoubleLeagueGoalById(int goalId);
-        // bool CheckPermissionByGoalId(int goalId, int userId);
+        Task<DoubleLeagueGoalDapper> GetDoubleLeagueGoalById(int goalId);
+       Task<bool> CheckPermissionByGoalId(int goalId, int userId);
         // DoubleLeagueGoalModel CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto);
         // void DeleteDoubleLeagueGoal(int goalId);
     }
@@ -32,35 +33,76 @@ namespace FoosballApi.Services
             #endif
         }
 
-        // public bool CheckPermissionByGoalId(int goalId, int userId)
-        // {
-        //     bool result = false;
-        //     List<int> teamIds = new List<int>();
-        //     int matchId = _context.DoubleLeagueGoals.FirstOrDefault(x => x.Id == goalId).MatchId;
-        //     var matchData = _context.DoubleLeagueMatches.FirstOrDefault(x => x.Id == matchId);
-        //     int leagueId = matchData.LeagueId;
+        private async Task<int> GetMatchIdFromDoubleLeagueGoals(int goalId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var user = await conn.QueryFirstOrDefaultAsync<int>(
+                    @"SELECT match_id as MatchId FROM double_league_goals WHERE id = @goalId",
+                    new { goalId });
+                return user;
+            }
+        }
 
-        //     teamIds.Add(matchData.TeamOneId);
-        //     teamIds.Add(matchData.TeamTwoId);
+        private async Task<DoubleLeagueMatchModel> GetDoubleLeagueMatchData(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var match = await conn.QueryFirstOrDefaultAsync<DoubleLeagueMatchModel>(
+                    @"select id as Id, team_one_id as TeamOneId, team_two_id as TeamTwoId, 
+                    league_id as LeagueId, start_time as StartTime, end_time as EndTime,
+                    team_one_score as TeamOneScore, team_two_score as TeamTwoScore,
+                    match_started as MatchStarted, match_ended as MatchEnded, 
+                    match_paused as MatchPaused
+                    from double_league_matches
+                    where id = @id",
+                    new { id });
+                return match;
+            }
+        }
+        
+        private List<DoubleLeaguePlayerModel> GetDoubleLeaguePlayersByTeamId(int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var players = conn.Query<DoubleLeaguePlayerModel>(
+                    @"SELECT id as Id, user_id as UserId, double_league_team_id as DoubleLeagueTeamId
+                    FROM double_league_players WHERE double_league_team_id = @teamId",
+                    new { teamId });
+                return players.ToList();
+            }
+        }
 
-        //     foreach (var item in teamIds)
-        //     {
-        //         var doubleLeaguePlayerData = _context.DoubleLeaguePlayers.Where(x => x.DoubleLeagueTeamId == item);
 
-        //         foreach (var element in doubleLeaguePlayerData)
-        //         {
-        //             if (element.UserId == userId)
-        //             {
-        //                 result = true;
-        //                 break;
-        //             }
+        public async Task<bool> CheckPermissionByGoalId(int goalId, int userId)
+        {
+            bool result = false;
+            List<int> teamIds = new List<int>();
+            int matchId = await GetMatchIdFromDoubleLeagueGoals(goalId);
+            var matchData = await GetDoubleLeagueMatchData(matchId);
+            int leagueId = matchData.LeagueId;
 
-        //         }
+            teamIds.Add(matchData.TeamOneId);
+            teamIds.Add(matchData.TeamTwoId);
 
-        //     }
+            foreach (var item in teamIds)
+            {
+                var doubleLeaguePlayerData = GetDoubleLeaguePlayersByTeamId(item);
 
-        //     return result;
-        // }
+                foreach (var element in doubleLeaguePlayerData)
+                {
+                    if (element.UserId == userId)
+                    {
+                        result = true;
+                        break;
+                    }
+
+                }
+
+            }
+
+            return result;
+        }
 
         // public DoubleLeagueGoalModel CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto)
         // {
@@ -158,24 +200,28 @@ namespace FoosballApi.Services
             return result;
         }
 
-        // public async Task<DoubleLeagueGoalDapper> GetDoubleLeagueGoalById(int goalId)
-        // {
-        //     CancellationToken ct = new();
-
-        //     var tx = await _context.Database.BeginTransactionAsync();
-
-        //     var dapperReadData = await _context.QueryAsync<DoubleLeagueGoalDapper>(ct, $@"
-        //         select distinct dlg.id, dlg.time_of_goal, dlg.scored_by_team_id, dlg.opponent_team_id, dlg.scorer_team_score, 
-        //         dlg.opponent_team_score, dlg.winner_goal, dlg.user_scorer_id, dlp.double_league_team_id, u.first_name as scorer_first_name, 
-        //         u.last_name as scorer_last_name
-        //         from double_league_goals dlg
-        //         join double_league_players dlp on dlp.double_league_team_id = dlg.scored_by_team_id
-        //         join users u on u.id = dlg.user_scorer_id
-        //         where dlg.id = {goalId}
-        //         order by dlg.id");
-
-        //     return dapperReadData.FirstOrDefault();
-        // }
+        public async Task<DoubleLeagueGoalDapper> GetDoubleLeagueGoalById(int goalId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var users = await conn.QueryAsync<DoubleLeagueGoalDapper>(
+                    @"
+                    select distinct dlg.id as Id, dlg.time_of_goal as TimeOfGoal, dlg.scored_by_team_id as ScoredByTeamId, 
+                    dlg.opponent_team_id as OpponentTeamId, dlg.scorer_team_score as ScorerTeamScore, 
+                    dlg.opponent_team_score as OpponentTeamScore, dlg.winner_goal as WinnerGoal, dlg.user_scorer_id as UserScorerId, 
+                    dlp.double_league_team_id as DoubleLeagueTeamId, u.first_name as ScorerFfirstName, 
+                    u.last_name as ScorerLastName
+                    from double_league_goals dlg
+                    join double_league_players dlp on dlp.double_league_team_id = dlg.scored_by_team_id
+                    join users u on u.id = dlg.user_scorer_id
+                    where dlg.id = @goalId
+                    order by dlg.id
+                    ",
+                new { goalId });
+                return users.FirstOrDefault();
+            }
+            
+        }
 
         private DoubleLeagueMatchModel GetDoubleLeagueMatchById(int matchId)
         {

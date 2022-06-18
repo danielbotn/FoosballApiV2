@@ -50,6 +50,29 @@ namespace FoosballApi.Controllers
             }
         }
 
+        [HttpGet("{goalId}", Name = "GetDoubleLeagueGoalById")]
+        [ProducesResponseType(typeof(DoubleLeagueGoalReadDto), 200)]
+        public async Task<ActionResult> GetDoubleLeagueGoalById(int goalId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                bool permission = await _goalService.CheckPermissionByGoalId(goalId, int.Parse(userId));
+
+                if (!permission)
+                    return Forbid();
+
+                var goaldData = await _goalService.GetDoubleLeagueGoalById(goalId);
+
+                return Ok(_mapper.Map<DoubleLeagueGoalReadDto>(goaldData));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         
     }
