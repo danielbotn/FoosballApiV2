@@ -56,14 +56,6 @@ builder.Services.AddAuthentication(x =>
         ValidateAudience = false
     };
 });
-// builder.Services.AddAuthentication("Bearer")
-//     .AddJwtBearer("Bearer", options =>
-//     {
-//         options.Authority = "http://localhost:5297";
-//         options.RequireHttpsMetadata = false;
-
-//         options.Audience = "api";
-//     });
 builder.Services.AddControllers().AddNewtonsoftJson(s =>
             {
                 s.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
@@ -72,6 +64,7 @@ builder.Services.AddControllers().AddNewtonsoftJson(s =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ICmsService, CmsService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

@@ -451,7 +451,7 @@ These endpoints should be implemented
 | Auth                  | POST   | verify-email        | Auth/verify-email                     | x      |
 | Auth                  | POST   | forgot-password     | Auth/forgot-password                  |        |
 | Auth                  | POST   | reset-password      | Auth/reset-password                   |        |
-| Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                 |        |
+| Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                 | x      |
 | DoubleLeagueGoals     | GET    | Get match by id     | DoubleLeagueGoals/match/{matchId}     |        |
 | DoubleLeagueGoals     | GET    | Get match by goalId | DoubleLeagueGoals/{goalId}            |        |
 | DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}            |        |
