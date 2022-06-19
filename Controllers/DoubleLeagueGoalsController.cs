@@ -74,6 +74,30 @@ namespace FoosballApi.Controllers
             }
         }
 
-        
+        [HttpPost("")]
+        [ProducesResponseType(typeof(DoubleLeagueGoalReadDto), StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateDoubleLeagueGoal([FromBody] DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                bool hasPermission = await _doubleLeaugeMatchService.CheckMatchAccess(doubleLeagueGoalCreateDto.MatchId, int.Parse(userId), int.Parse(currentOrganisationId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var newGoal = await _goalService.CreateDoubleLeagueGoal(doubleLeagueGoalCreateDto);
+
+                var doubleLeagueGoalReadDto = _mapper.Map<DoubleLeagueGoalReadDto>(newGoal);
+
+                return CreatedAtRoute("GetDoubleLeagueGoalById", new { goalId = newGoal.Id }, doubleLeagueGoalReadDto);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

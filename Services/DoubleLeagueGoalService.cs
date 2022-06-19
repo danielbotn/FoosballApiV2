@@ -16,8 +16,8 @@ namespace FoosballApi.Services
     {
         Task<IEnumerable<DoubleLeagueGoalExtended>> GetAllDoubleLeagueGoalsByMatchId(int matchId);
         Task<DoubleLeagueGoalDapper> GetDoubleLeagueGoalById(int goalId);
-       Task<bool> CheckPermissionByGoalId(int goalId, int userId);
-        // DoubleLeagueGoalModel CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto);
+        Task<bool> CheckPermissionByGoalId(int goalId, int userId);
+        Task<DoubleLeagueGoalModel> CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto);
         // void DeleteDoubleLeagueGoal(int goalId);
     }
 
@@ -104,27 +104,47 @@ namespace FoosballApi.Services
             return result;
         }
 
-        // public DoubleLeagueGoalModel CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto)
-        // {
-        //     DateTime now = DateTime.Now;
-        //     DoubleLeagueGoalModel newGoal = new();
-        //     newGoal.TimeOfGoal = now;
-        //     newGoal.MatchId = doubleLeagueGoalCreateDto.MatchId;
-        //     newGoal.ScoredByTeamId = doubleLeagueGoalCreateDto.ScoredByTeamId;
-        //     newGoal.OpponentTeamId = doubleLeagueGoalCreateDto.OpponentTeamId;
-        //     newGoal.ScorerTeamScore = doubleLeagueGoalCreateDto.ScorerTeamScore;
-        //     newGoal.OpponentTeamScore = doubleLeagueGoalCreateDto.OpponentTeamScore;
+        public async Task<DoubleLeagueGoalModel> CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto)
+        {
+            DateTime now = DateTime.Now;
+            DoubleLeagueGoalModel newGoal = new();
+            newGoal.TimeOfGoal = now;
+            newGoal.MatchId = doubleLeagueGoalCreateDto.MatchId;
+            newGoal.ScoredByTeamId = doubleLeagueGoalCreateDto.ScoredByTeamId;
+            newGoal.OpponentTeamId = doubleLeagueGoalCreateDto.OpponentTeamId;
+            newGoal.ScorerTeamScore = doubleLeagueGoalCreateDto.ScorerTeamScore;
+            newGoal.OpponentTeamScore = doubleLeagueGoalCreateDto.OpponentTeamScore;
 
-        //     if (doubleLeagueGoalCreateDto.WinnerGoal != null)
-        //         newGoal.WinnerGoal = (bool)doubleLeagueGoalCreateDto.WinnerGoal;
+            if (doubleLeagueGoalCreateDto.WinnerGoal != null)
+                newGoal.WinnerGoal = (bool)doubleLeagueGoalCreateDto.WinnerGoal;
 
-        //     newGoal.UserScorerId = doubleLeagueGoalCreateDto.UserScorerId;
+            newGoal.UserScorerId = doubleLeagueGoalCreateDto.UserScorerId;
 
-        //     _context.DoubleLeagueGoals.Add(newGoal);
-        //     _context.SaveChanges();
+            // use dapper to create new goal
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var nGoal = await conn.ExecuteAsync(
+                    @"INSERT INTO double_league_goals (time_of_goal, match_id, scored_by_team_id, opponent_team_id,
+                    scorer_team_score, opponent_team_score, winner_goal, user_scorer_id)
+                    VALUES (@time_of_goal, @match_id, @scored_by_team_id, @opponent_team_id, @scorer_team_score, @opponent_team_score,
+                    @winner_goal, @user_scorer_id)
+                    RETURNING id",
+                    new { 
+                        time_of_goal = newGoal.TimeOfGoal, 
+                        match_id = newGoal.MatchId, 
+                        scored_by_team_id = newGoal.ScoredByTeamId,
+                        opponent_team_id = newGoal.OpponentTeamId,
+                        scorer_team_score = newGoal.ScorerTeamScore,
+                        opponent_team_score = newGoal.OpponentTeamScore,
+                        winner_goal = newGoal.WinnerGoal,
+                        user_scorer_id = newGoal.UserScorerId });
+               
+                newGoal.Id = nGoal;
+            }
 
-        //     return newGoal;
-        // }
+
+            return newGoal;
+        }
 
 
         // public void DeleteDoubleLeagueGoal(int goalId)

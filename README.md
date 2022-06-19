@@ -454,7 +454,7 @@ These endpoints should be implemented
 | Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                 | x      |
 | DoubleLeagueGoals     | GET    | Get match by id     | DoubleLeagueGoals/match/{matchId}     | x      |
 | DoubleLeagueGoals     | GET    | Get goal by goalId  | DoubleLeagueGoals/{goalId}            | x      |
-| DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}            |        |
+| DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}            | x      |
 | DoubleLeagueGoals     | POST   | Create new goal     | DoubleLeagueGoals                     |        |
 | DoubleLeagueMatches   | GET    | Get all Dl matches  | DoubleLeagueMatches                   |        |
 | DoubleLeagueMatches   | PATCH  | Update dl match     | DoubleLeagueMatches                   |        |
