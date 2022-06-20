@@ -16,5 +16,6 @@ namespace FoosballApi.Models.DoubleLeagueGoals
         public string ScorerFirstName { get; set; }
         public string ScorerLastName { get; set; }
         public string ScorerPhotoUrl { get; set; }
+        public int MatchId { get; set; }
     }
 }

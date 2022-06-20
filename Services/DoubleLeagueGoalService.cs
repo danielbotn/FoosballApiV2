@@ -18,7 +18,7 @@ namespace FoosballApi.Services
         Task<DoubleLeagueGoalDapper> GetDoubleLeagueGoalById(int goalId);
         Task<bool> CheckPermissionByGoalId(int goalId, int userId);
         Task<DoubleLeagueGoalModel> CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto);
-        // void DeleteDoubleLeagueGoal(int goalId);
+        void DeleteDoubleLeagueGoal(int goalId);
     }
 
     public class DoubleLeagueGoalService : IDoubleLeagueGoalService
@@ -146,29 +146,55 @@ namespace FoosballApi.Services
             return newGoal;
         }
 
+        private async void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"UPDATE double_league_matches 
+                    SET team_one_score = @team_one_score, team_two_score = @team_two_score
+                    WHERE id = @id",
+                    new 
+                    { 
+                        team_one_score = match.TeamOneScore, 
+                        team_two_score = match.TeamTwoScore, 
+                        id = match.Id 
+                    });
+            }
+        }
 
-        // public void DeleteDoubleLeagueGoal(int goalId)
-        // {
-        //     var goalToDelete = _context.DoubleLeagueGoals.FirstOrDefault(x => x.Id == goalId);
-        //     int scoredByTeamId = goalToDelete.ScoredByTeamId;
+        private async void DeleteDoubleLeagueGoalAsync(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"DELETE FROM double_league_goals WHERE id = @id",
+                    new { id = id });
+            }
+        }
 
-        //     var doubleLeagueMatch = _context.DoubleLeagueMatches.FirstOrDefault(x => x.Id == goalToDelete.MatchId);
+        public async void DeleteDoubleLeagueGoal(int goalId)
+        {
+            var goalToDelete = await GetDoubleLeagueGoalById(goalId);
+            int scoredByTeamId = goalToDelete.ScoredByTeamId;
 
-        //     if (doubleLeagueMatch.TeamOneId == scoredByTeamId)
-        //     {
-        //         if (doubleLeagueMatch.TeamOneScore > 0)
-        //             doubleLeagueMatch.TeamOneScore -= 1;
-        //     }
+            var doubleLeagueMatch = await GetDoubleLeagueMatchByIdAsync(goalToDelete.MatchId);
+            
+            if (doubleLeagueMatch.TeamOneId == scoredByTeamId)
+            {
+                if (doubleLeagueMatch.TeamOneScore > 0)
+                    doubleLeagueMatch.TeamOneScore -= 1;
+            }
 
-        //     if (doubleLeagueMatch.TeamTwoId == scoredByTeamId)
-        //     {
-        //         if (doubleLeagueMatch.TeamTwoScore > 0)
-        //             doubleLeagueMatch.TeamTwoScore -= 1;
-        //     }
+            if (doubleLeagueMatch.TeamTwoId == scoredByTeamId)
+            {
+                if (doubleLeagueMatch.TeamTwoScore > 0)
+                    doubleLeagueMatch.TeamTwoScore -= 1;
+            }
 
-        //     _context.DoubleLeagueGoals.Remove(goalToDelete);
-        //     _context.SaveChanges();
-        // }
+            UpdateDoubleLeagueMatch(doubleLeagueMatch);
+            DeleteDoubleLeagueGoalAsync(goalId);
+        }
 
         public async Task<List<DoubleLeagueGoalDapper>> GetDoubleLeagueGoals(int matchId)
         {
@@ -226,7 +252,7 @@ namespace FoosballApi.Services
             {
                 var users = await conn.QueryAsync<DoubleLeagueGoalDapper>(
                     @"
-                    select distinct dlg.id as Id, dlg.time_of_goal as TimeOfGoal, dlg.scored_by_team_id as ScoredByTeamId, 
+                    select distinct dlg.id as Id, dlg.time_of_goal as TimeOfGoal, dlg.match_id as MatchId, dlg.scored_by_team_id as ScoredByTeamId, 
                     dlg.opponent_team_id as OpponentTeamId, dlg.scorer_team_score as ScorerTeamScore, 
                     dlg.opponent_team_score as OpponentTeamScore, dlg.winner_goal as WinnerGoal, dlg.user_scorer_id as UserScorerId, 
                     dlp.double_league_team_id as DoubleLeagueTeamId, u.first_name as ScorerFfirstName, 
@@ -241,6 +267,20 @@ namespace FoosballApi.Services
                 return users.FirstOrDefault();
             }
             
+        }
+
+        private async Task<DoubleLeagueMatchModel> GetDoubleLeagueMatchByIdAsync(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var match = await conn.QueryFirstOrDefaultAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id, team_one_id as TeamOneId, team_two_id as TeamTwoId, league_id as LeagueId, start_time as StartTime,
+                    end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore, match_started as MatchStarted, 
+                    match_ended as MatchEnded, match_paused as MatchPaused 
+                    FROM double_league_matches WHERE id = @id",
+                    new { id });
+                return match;
+            }
         }
 
         private DoubleLeagueMatchModel GetDoubleLeagueMatchById(int matchId)

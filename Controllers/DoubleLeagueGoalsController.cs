@@ -99,5 +99,29 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpDelete("{goalId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> DeleteDoubleLeagueGoal(int goalId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                bool permission = await _goalService.CheckPermissionByGoalId(goalId, int.Parse(userId));
+
+                if (!permission)
+                    return Forbid();
+
+                _goalService.DeleteDoubleLeagueGoal(goalId);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
