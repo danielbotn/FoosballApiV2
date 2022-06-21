@@ -13,6 +13,8 @@ namespace FoosballApi.Services
     public interface IDoubleLeaugeMatchService
     {
         Task<bool> CheckMatchAccess(int matchId, int userId, int currentOrganisationId);
+        Task<bool> CheckLeaguePermission(int leagueId, int userId);
+        Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisationId(int currentOrganisationId, int leagueId);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -71,6 +73,118 @@ namespace FoosballApi.Services
                 }
             }
 
+            return result;
+        }
+
+        private async Task<List<LeaguePermissionJoinModel>> GetDoubleLeaguePermissions(int userId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var users = await conn.QueryAsync<LeaguePermissionJoinModel>(
+                    @"SELECT dlp.id as Id, dlp.user_id as UserId, dlt.league_id as LeagueId
+                    FROM double_league_players dlp
+                    JOIN double_league_teams dlt ON dlp.double_league_team_id = dlt.id
+                    WHERE dlp.user_id = @user_id",
+                new { user_id = userId });
+                return users.ToList();
+            }
+        }
+
+        public async Task<bool> CheckLeaguePermission(int leagueId, int userId)
+        {
+            bool result = false;
+            var query = await GetDoubleLeaguePermissions(userId);
+
+            foreach (var item in query)
+            {
+                if (item.LeagueId == leagueId && item.UserId == userId)
+                {
+                    result = true;
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<List<AllMatchesModel>> GetDoubleLeagueMatchesByLeagueId(int leagueId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<AllMatchesModel>(
+                    @"SELECT dlm.id as Id, dlm.team_one_id as TeamOneId, dlm.team_two_id as TeamTwoId, dlm.league_id as LeagueId, dlm.start_time as StartTime,
+                    dlm.end_time as EndTime, dlm.team_one_score as TeamOneScore, dlm.team_two_score as TeamTwoScore, dlm.match_started as MatchStarted,
+                    dlm.match_ended as MatchEnded, dlm.match_paused as MatchPaused
+                    FROM double_league_matches dlm
+                    WHERE dlm.league_id = @leagueId",
+                    new { leagueId });
+                return matches.ToList();
+            }
+        }
+
+        private List<TeamModel> GetSubQuery(AllMatchesModel item)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teams = conn.Query<TeamModel>(
+                    @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email
+                    FROM double_league_players dlp
+                    JOIN users u ON dlp.user_id = u.id
+                    WHERE dlp.double_league_team_id = @team_one_id",
+                new { team_one_id = item.TeamOneId });
+                return teams.ToList();
+            }
+        }
+
+        private List<TeamModel> GetSubQueryTwo(AllMatchesModel item)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teams = conn.Query<TeamModel>(
+                    @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email
+                    FROM double_league_players dlp
+                    JOIN users u ON dlp.user_id = u.id
+                    WHERE dlp.double_league_team_id = @team_two_id",
+                new { team_two_id = item.TeamTwoId });
+                return teams.ToList();
+            }
+        }
+
+        public async Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisationId(int currentOrganisationId, int leagueId)
+        {
+            var query = await GetDoubleLeagueMatchesByLeagueId(leagueId);
+
+            List<AllMatchesModel> result = new List<AllMatchesModel>();
+
+            foreach (var item in query)
+            {
+                var subquery = GetSubQuery(item);
+
+                var teamOne = subquery.ToArray();
+
+                var subquery2 = GetSubQueryTwo(item);
+
+                var teamTwo = subquery2.ToArray();
+
+                var allTeams = new AllMatchesModel
+                {
+                    Id = item.Id,
+                    TeamOneId = item.TeamOneId,
+                    TeamTwoId = item.TeamTwoId,
+                    LeagueId = item.LeagueId,
+                    StartTime = item.StartTime,
+                    EndTime = item.EndTime,
+                    TeamOneScore = (int)item.TeamOneScore,
+                    TeamTwoScore = (int)item.TeamTwoScore,
+                    MatchStarted = (bool)item.MatchStarted,
+                    MatchEnded = (bool)item.MatchEnded,
+                    MatchPaused = (bool)item.MatchPaused,
+                    TeamOne = teamOne,
+                    TeamTwo = teamTwo
+                };
+                result.Add(allTeams);
+
+            }
             return result;
         }
     }
