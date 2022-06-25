@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dapper;
 using FoosballApi.Models;
+using FoosballApi.Models.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueMatches;
 using FoosballApi.Models.DoubleLeagueTeams;
 using FoosballApi.Models.Other;
@@ -17,6 +18,7 @@ namespace FoosballApi.Services
         Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisationId(int currentOrganisationId, int leagueId);
         Task<DoubleLeagueMatchModel> GetMatchById(int matchId);
         void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match);
+        Task<DoubleLeagueMatchModel> ResetMatch(DoubleLeagueMatchModel doubleLeagueMatchModel, int matchId);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -215,6 +217,86 @@ namespace FoosballApi.Services
                         id = match.Id
                      });
             }
+        }
+
+        private async Task<List<DoubleLeagueGoalModel>> GetDoubleLeagueGoalsByMatchId(int matchId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var goals = await conn.QueryAsync<DoubleLeagueGoalModel>(
+                    @"SELECT dlg.id as Id, time_of_goal as TimeOfGoal, dlg.match_id as MatchId, scored_by_team_id as ScoredByTeamId,
+                    opponent_team_id as OpponentTeamId, scorer_team_score as ScorerTeamScore, opponent_team_score as OpponentTeamScore,
+                    winner_goal as WinnerGoal, user_scorer_id as UserScorerId
+                    FROM double_league_goals dlg
+                    WHERE dlg.match_id = @match_id",
+                new { match_id = matchId });
+                return goals.ToList();
+            }
+        }
+
+        private async void RemoveRange(List<DoubleLeagueGoalModel> goals)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                foreach (var item in goals)
+                {
+                    await conn.ExecuteAsync(
+                        @"DELETE FROM double_league_goals
+                        WHERE id = @id",
+                        new { id = item.Id });
+                }
+            }
+        }
+
+        private async void DeleteAllGoals(int matchId)
+        {
+            var allGoals = await GetDoubleLeagueGoalsByMatchId(matchId);	
+            RemoveRange(allGoals);
+        }
+
+        private async Task<DoubleLeagueMatchModel> ResetDoubleLeagueMatch(DoubleLeagueMatchModel doubleLeagueMatchModel)
+        {
+            doubleLeagueMatchModel.StartTime = null;
+            doubleLeagueMatchModel.EndTime = null;
+            doubleLeagueMatchModel.TeamOneScore = 0;
+            doubleLeagueMatchModel.TeamTwoScore = 0;
+            doubleLeagueMatchModel.MatchStarted = false;
+            doubleLeagueMatchModel.MatchEnded = false;
+            doubleLeagueMatchModel.MatchPaused = false;
+
+            // use dapper
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"UPDATE double_league_matches 
+                    SET start_time = @start_time, 
+                    end_time = @end_time, team_one_score = @team_one_score, 
+                    team_two_score = @team_two_score, match_started = @match_started,
+                    match_ended = @match_ended, match_paused = @match_paused
+                    WHERE id = @id",
+                    new { 
+                        start_time = doubleLeagueMatchModel.StartTime,
+                        end_time = doubleLeagueMatchModel.EndTime,
+                        team_one_score = doubleLeagueMatchModel.TeamOneScore,
+                        team_two_score = doubleLeagueMatchModel.TeamTwoScore,
+                        match_started = doubleLeagueMatchModel.MatchStarted,
+                        match_ended = doubleLeagueMatchModel.MatchEnded,
+                        match_paused = doubleLeagueMatchModel.MatchPaused,
+                        id = doubleLeagueMatchModel.Id
+                     });
+            }
+
+            return doubleLeagueMatchModel;
+        }
+
+        public async Task<DoubleLeagueMatchModel> ResetMatch(DoubleLeagueMatchModel doubleLeagueMatchModel, int matchId)
+        {
+            if (doubleLeagueMatchModel == null)
+                throw new ArgumentNullException(nameof(doubleLeagueMatchModel));
+
+            DeleteAllGoals(matchId);
+
+            return await ResetDoubleLeagueMatch(doubleLeagueMatchModel);
         }
     }
 }
