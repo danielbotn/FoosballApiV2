@@ -12,6 +12,9 @@ namespace FoosballApi.Profiles
             CreateMap<AllMatchesModelReadDto, AllMatchesModel>();
             CreateMap<AllMatchesModel, AllMatchesModelReadDto>();
 
+            CreateMap<AllMatchesModelReadDto, DoubleLeagueMatchModel>();
+            CreateMap<DoubleLeagueMatchModel, AllMatchesModelReadDto>();
+
             CreateMap<DoubleLeagueStandingsReadDto, DoubleLeagueStandingsQuery>();
             CreateMap<DoubleLeagueStandingsQuery, DoubleLeagueStandingsReadDto>();
 

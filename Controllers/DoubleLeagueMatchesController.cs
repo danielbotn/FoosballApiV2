@@ -112,5 +112,29 @@ namespace FoosballApi.Controllers
             }
         }
 
+        [HttpGet("match/{matchId}")]
+        [ProducesResponseType(typeof(AllMatchesModelReadDto), 200)]
+        public async Task<ActionResult<AllMatchesModelReadDto>> GetDoubleLeagueMatchById(int matchId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                bool permission = await _doubleLeaugeMatchService.CheckMatchAccess(matchId, int.Parse(userId), int.Parse(currentOrganisationId));
+
+                if (!permission)
+                    return Forbid();
+
+                var matchData = await _doubleLeaugeMatchService.GetMatchById(matchId);
+
+                return Ok(_mapper.Map<AllMatchesModelReadDto>(matchData));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
     }
 }

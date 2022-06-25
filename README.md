@@ -457,9 +457,9 @@ These endpoints should be implemented
 | DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}            | x      |
 | DoubleLeagueGoals     | POST   | Create new goal     | DoubleLeagueGoals                     | x      |
 | DoubleLeagueMatches   | GET    | Get all Dl matches  | DoubleLeagueMatches                   | x      |
-| DoubleLeagueMatches   | PATCH  | Update dl match     | DoubleLeagueMatches                   |        |
-| DoubleLeagueMatches   | GET    | Get match by id     | DoubleLeagueMatches/{matchId}         |        |
-| DoubleLeagueMatches   | PUT    | reset-match         | DoubleLeagueMatches/reset-match       |        |
+| DoubleLeagueMatches   | PATCH  | Update dl match     | DoubleLeagueMatches                   | x      |
+| DoubleLeagueMatches   | GET    | Get match by id     | DoubleLeagueMatches/match/{matchId}   | x      |
+| DoubleLeagueMatches   | PUT    | reset-match         | DoubleLeagueMatches/reset-match       | x      |
 | DoubleLeaguePlayers   | GET    | Gel all league pl   | DoubleLeaguePlayers/{leagueId}        |        |
 | DoubleLeaguePlayers   | GET    | Get player by id    | DoubleLeaguePlayers/player/{id}       |        |
 | DoubleLeagueTeams     | GET    | Get teams by l. id  | DoubleLeagueTeams/{leagueId}          |        |
