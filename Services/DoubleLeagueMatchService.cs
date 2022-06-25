@@ -15,6 +15,8 @@ namespace FoosballApi.Services
         Task<bool> CheckMatchAccess(int matchId, int userId, int currentOrganisationId);
         Task<bool> CheckLeaguePermission(int leagueId, int userId);
         Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisationId(int currentOrganisationId, int leagueId);
+        Task<DoubleLeagueMatchModel> GetMatchById(int matchId);
+        void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -30,18 +32,17 @@ namespace FoosballApi.Services
             #endif
         }
 
-        // context.DoubleLeagueMatches.SingleOrDefault(x => x.Id == matchId);
-        private async Task<DoubleLeagueMatchModel> GetMatchById(int matchId)
+        public async Task<DoubleLeagueMatchModel> GetMatchById(int matchId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var user = await conn.QueryFirstOrDefaultAsync<DoubleLeagueMatchModel>(
+                var match = await conn.QueryFirstOrDefaultAsync<DoubleLeagueMatchModel>(
                     @"SELECT id as Id, team_one_id as TeamOneId, team_two_id as TeamTwoId, league_id as LeagueId, start_time as StartTime,
                     end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore, match_started as MatchStarted, 
                     match_ended as MatchEnded, match_paused as MatchPaused 
                     FROM double_league_matches WHERE id = @matchId",
                     new { matchId });
-                return user;
+                return match;
             }
         }
 
@@ -186,6 +187,34 @@ namespace FoosballApi.Services
 
             }
             return result;
+        }
+
+        public void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE double_league_matches 
+                    SET team_one_id = @team_one_Id, 
+                    team_two_id = @team_two_id, start_time = @start_time, 
+                    end_time = @end_time, team_one_score = @team_one_score, 
+                    team_two_score = @team_two_score, match_started = @match_started,
+                    match_ended = @match_ended, match_paused = @match_paused
+                    WHERE id = @id",
+                    new { 
+                        team_one_id = match.TeamOneId,
+                        team_two_id = match.TeamTwoId,
+                        leauge_id = match.LeagueId,
+                        start_time = match.StartTime,
+                        end_time = match.EndTime,
+                        team_one_score = match.TeamOneScore,
+                        team_two_score = match.TeamTwoScore,
+                        match_started = match.MatchStarted,
+                        match_ended = match.MatchEnded,
+                        match_paused = match.MatchPaused,
+                        id = match.Id
+                     });
+            }
         }
     }
 }

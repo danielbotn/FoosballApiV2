@@ -48,5 +48,41 @@ namespace FoosballApi.Controllers
             }
         }
 
+        [HttpPatch("")]
+        [ProducesResponseType(typeof(NoContentResult), 204)]
+        public async Task<ActionResult> UpdateDoubleLeagueMatch(int matchId, JsonPatchDocument<DoubleLeagueMatchUpdateDto> patchDoc)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+                var match = await _doubleLeaugeMatchService.GetMatchById(matchId);
+
+                if (match == null)
+                    return NotFound();
+
+                bool hasPermission = await _doubleLeaugeMatchService.CheckMatchAccess(matchId, int.Parse(userId), int.Parse(currentOrganisationId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var matchToPatch = _mapper.Map<DoubleLeagueMatchUpdateDto>(match);
+                patchDoc.ApplyTo(matchToPatch, ModelState);
+
+                if (!TryValidateModel(matchToPatch))
+                    return ValidationProblem(ModelState);
+
+                _mapper.Map(matchToPatch, match);
+
+                _doubleLeaugeMatchService.UpdateDoubleLeagueMatch(match);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
     }
 }

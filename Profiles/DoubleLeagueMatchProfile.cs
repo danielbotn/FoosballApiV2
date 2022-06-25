@@ -14,6 +14,9 @@ namespace FoosballApi.Profiles
 
             CreateMap<DoubleLeagueStandingsReadDto, DoubleLeagueStandingsQuery>();
             CreateMap<DoubleLeagueStandingsQuery, DoubleLeagueStandingsReadDto>();
+
+            CreateMap<DoubleLeagueMatchModel, DoubleLeagueMatchUpdateDto>();
+            CreateMap<DoubleLeagueMatchUpdateDto, DoubleLeagueMatchModel>();
         }
     }
 }
