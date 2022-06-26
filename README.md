@@ -460,8 +460,8 @@ These endpoints should be implemented
 | DoubleLeagueMatches   | PATCH  | Update dl match     | DoubleLeagueMatches                   | x      |
 | DoubleLeagueMatches   | GET    | Get match by id     | DoubleLeagueMatches/match/{matchId}   | x      |
 | DoubleLeagueMatches   | PUT    | reset-match         | DoubleLeagueMatches/reset-match       | x      |
-| DoubleLeaguePlayers   | GET    | Gel all league pl   | DoubleLeaguePlayers/{leagueId}        |        |
-| DoubleLeaguePlayers   | GET    | Get player by id    | DoubleLeaguePlayers/player/{id}       |        |
+| DoubleLeaguePlayers   | GET    | Gel all league pl   | DoubleLeaguePlayers/{leagueId}        | x      |
+| DoubleLeaguePlayers   | GET    | Get player by id    | DoubleLeaguePlayers/player/{id}       | x      |
 | DoubleLeagueTeams     | GET    | Get teams by l. id  | DoubleLeagueTeams/{leagueId}          |        |
 | DoubleLeagueTeams     | GET    | Get team by id      | DoubleLeagueTeams/team/{id}           |        |
 | DoubleLeagueTeams     | POST   | Create new league   | DoubleLeagueTeams/{leagueId}/{teamId} |        |
