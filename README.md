@@ -462,10 +462,10 @@ These endpoints should be implemented
 | DoubleLeagueMatches   | PUT    | reset-match         | DoubleLeagueMatches/reset-match       | x      |
 | DoubleLeaguePlayers   | GET    | Gel all league pl   | DoubleLeaguePlayers/{leagueId}        | x      |
 | DoubleLeaguePlayers   | GET    | Get player by id    | DoubleLeaguePlayers/player/{id}       | x      |
-| DoubleLeagueTeams     | GET    | Get teams by l. id  | DoubleLeagueTeams/{leagueId}          |        |
-| DoubleLeagueTeams     | GET    | Get team by id      | DoubleLeagueTeams/team/{id}           |        |
-| DoubleLeagueTeams     | POST   | Create new league   | DoubleLeagueTeams/{leagueId}/{teamId} |        |
-| DoubleLeagueTeams     | DELETE | Delete league       | DoubleLeagueTeams/{leagueId}/{teamId} |        |
+| DoubleLeagueTeams     | GET    | Get teams by l. id  | DoubleLeagueTeams/{leagueId}          | x      |
+| DoubleLeagueTeams     | GET    | Get team by id      | DoubleLeagueTeams/team/{id}           | x      |
+| DoubleLeagueTeams     | POST   | Create new league   | DoubleLeagueTeams/{leagueId}/{teamId} | x      |
+| DoubleLeagueTeams     | DELETE | Delete league       | DoubleLeagueTeams/{leagueId}/{teamId} | x      |
 | FreehandDoubleGoals   | GET    | Get dlg by matchId  | DoubleLeagueGoals/goals/{matchId}     |        |
 | FreehandDoubleGoals   | GET    | get dlb by id       | DoubleLeagueGoals/{goalId}            |        |
 | FreehandDoubleGoals   | POST   | Create dlg goal     | DoubleLeagueGoals                     |        |
