@@ -467,7 +467,7 @@ These endpoints should be implemented
 | DoubleLeagueTeams     | POST   | Create new league   | DoubleLeagueTeams/{leagueId}/{teamId} | x      |
 | DoubleLeagueTeams     | DELETE | Delete league       | DoubleLeagueTeams/{leagueId}/{teamId} | x      |
 | FreehandDoubleGoals   | GET    | Get dlga by matchId | FreehandDoubleGoals/goals/{matchId}   | x      |
-| FreehandDoubleGoals   | GET    | get dlb by id       | DoubleLeagueGoals/{goalId}            |        |
+| FreehandDoubleGoals   | GET    | get dlb by id       | DoubleLeagueGoals/{goalId}            | x      |
 | FreehandDoubleGoals   | POST   | Create dlg goal     | DoubleLeagueGoals                     |        |
 | FreehandDoubleGoals   | PATCH  | UPDATE dlg goal     | DoubleLeaguGoals                      |        |
 | FreehandDoubleGoals   | DELETE | Delete dlg goal     | DoubleLeagueGoals/{matchId}/{goalId}  |        |

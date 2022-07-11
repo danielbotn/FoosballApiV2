@@ -53,33 +53,33 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpGet("{goalId}", Name = "GetFreehandDoubleGoalById")]
-        // [ProducesResponseType(typeof(FreehandDoubleGoalReadDto), StatusCodes.Status200OK)]
-        // public ActionResult<FreehandDoubleGoalReadDto> GetFreehandDoubleGoalById(int goalId, int matchId)
-        // {
-        //     try
-        //     {
-        //         string userId = User.Identity.Name;
+        [HttpGet("{goalId}", Name = "GetFreehandDoubleGoalById")]
+        [ProducesResponseType(typeof(FreehandDoubleGoalReadDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult> GetFreehandDoubleGoalById(int goalId, int matchId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
 
-        //         bool matchAccess = _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), matchId);
+                bool matchAccess = await _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), matchId);
 
-        //         if (!matchAccess)
-        //             return Forbid();
+                if (!matchAccess)
+                    return Forbid();
 
-        //         bool goalAccess = _doubleFreehandGoalservice.CheckGoalPermission(int.Parse(userId), matchId, goalId);
+                bool goalAccess = await _doubleFreehandGoalservice.CheckGoalPermission(int.Parse(userId), matchId, goalId);
 
-        //         if (!goalAccess)
-        //             return Forbid();
+                if (!goalAccess)
+                    return Forbid();
 
-        //         var freehandDoubleGoal = _doubleFreehandGoalservice.GetFreehandDoubleGoal(goalId);
+                var freehandDoubleGoal = await _doubleFreehandGoalservice.GetFreehandDoubleGoal(goalId);
 
-        //         return Ok(_mapper.Map<FreehandDoubleGoalReadDto>(freehandDoubleGoal));
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+                return Ok(_mapper.Map<FreehandDoubleGoalReadDto>(freehandDoubleGoal));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         // [HttpPost("")]
         // [ProducesResponseType(typeof(FreehandDoubleGoalReadDto), StatusCodes.Status201Created)]

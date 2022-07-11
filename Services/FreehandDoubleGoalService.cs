@@ -9,8 +9,8 @@ namespace FoosballApi.Services
     public interface IFreehandDoubleGoalService
     {
         Task<IEnumerable<FreehandDoubleGoalsExtendedDto>> GetAllFreehandGoals(int matchId, int userId);
-        FreehandDoubleGoalModel GetFreehandDoubleGoal(int goalId);
-        bool CheckGoalPermission(int userId, int matchId, int goalId);
+        Task<FreehandDoubleGoalModel> GetFreehandDoubleGoal(int goalId);
+        Task<bool> CheckGoalPermission(int userId, int matchId, int goalId);
         FreehandDoubleGoalModel CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto);
         void DeleteFreehandGoal(FreehandDoubleGoalModel goalItem);
         void UpdateFreehanDoubledGoal(FreehandDoubleGoalModel goalItem);
@@ -30,9 +30,31 @@ namespace FoosballApi.Services
             #endif
         }
 
-        public bool CheckGoalPermission(int userId, int matchId, int goalId)
+        private async Task<FreehandDoubleGoalPermission> GetFreehandDoubleGoalPermission(int goalId, int matchId)
         {
-            throw new NotImplementedException();
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                var sql = @"
+                    SELECT double_match_id as DoubleMatchId, scored_by_user_id as ScoredByUserId, 
+                    player_one_team_a as PlayerOneTeamA, player_two_team_a as PlayerTwoTeamA, 
+                    player_one_team_b as PlayerOneTeamB, player_two_team_b as PlayerTwoTeamB
+                    FROM freehand_double_goals fdg
+                    JOIN freehand_double_matches fdm ON fdg.double_match_id = fdm.id
+                    WHERE fdg.double_match_id = @double_match_id AND fdg.id = @goal_id";
+                return await connection.QueryFirstOrDefaultAsync<FreehandDoubleGoalPermission>(sql, new { double_match_id = matchId, goal_id = goalId });
+            }
+        }
+
+        public async Task<bool> CheckGoalPermission(int userId, int matchId, int goalId)
+        {
+            var query = await GetFreehandDoubleGoalPermission(goalId, matchId);
+
+            if (query.DoubleMatchId == matchId &&
+                (userId == query.PlayerOneTeamA || userId == query.PlayerOneTeamB
+                || userId == query.PlayerTwoTeamA || userId == query.PlayerTwoTeamB))
+                return true;
+
+            return false;
         }
 
         public FreehandDoubleGoalModel CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto)
@@ -130,8 +152,19 @@ namespace FoosballApi.Services
             return result;
         }
 
-        public FreehandDoubleGoalModel GetFreehandDoubleGoal(int goalId)
+        public async Task<FreehandDoubleGoalModel> GetFreehandDoubleGoal(int goalId)
         {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var match = await conn.QueryFirstOrDefaultAsync<FreehandDoubleGoalModel>(
+                    @"SELECT id as Id, time_of_goal as TimeOfGoal, double_match_id as DoubleMatchId,
+                    scored_by_user_id as ScoredByUserId, scorer_team_score as ScorerTeamScore, 
+                    opponent_team_score as OpponentTeamScore, winner_goal as WinnerGoal
+                    FROM freehand_double_goals
+                    WHERE id = @id",
+                    new { id = goalId });
+                return match;
+            }
             throw new NotImplementedException();
         }
 
