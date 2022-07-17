@@ -444,74 +444,74 @@ https://support.sqldbm.com/en/knowledge-bases/2/articles/2407-how-to-generate-sq
 
 These endpoints should be implemented
 
-| Controller            | method | Name                | PATH                                  | Status |
-| --------------------- | ------ | ------------------- | ------------------------------------- | ------ |
-| Auth                  | POST   | Login               | Auth/login                            | x      |
-| Auth                  | POST   | register            | Auth/register                         | x      |
-| Auth                  | POST   | verify-email        | Auth/verify-email                     | x      |
-| Auth                  | POST   | forgot-password     | Auth/forgot-password                  |        |
-| Auth                  | POST   | reset-password      | Auth/reset-password                   |        |
-| Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                 | x      |
-| DoubleLeagueGoals     | GET    | Get match by id     | DoubleLeagueGoals/match/{matchId}     | x      |
-| DoubleLeagueGoals     | GET    | Get goal by goalId  | DoubleLeagueGoals/{goalId}            | x      |
-| DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}            | x      |
-| DoubleLeagueGoals     | POST   | Create new goal     | DoubleLeagueGoals                     | x      |
-| DoubleLeagueMatches   | GET    | Get all Dl matches  | DoubleLeagueMatches                   | x      |
-| DoubleLeagueMatches   | PATCH  | Update dl match     | DoubleLeagueMatches                   | x      |
-| DoubleLeagueMatches   | GET    | Get match by id     | DoubleLeagueMatches/match/{matchId}   | x      |
-| DoubleLeagueMatches   | PUT    | reset-match         | DoubleLeagueMatches/reset-match       | x      |
-| DoubleLeaguePlayers   | GET    | Gel all league pl   | DoubleLeaguePlayers/{leagueId}        | x      |
-| DoubleLeaguePlayers   | GET    | Get player by id    | DoubleLeaguePlayers/player/{id}       | x      |
-| DoubleLeagueTeams     | GET    | Get teams by l. id  | DoubleLeagueTeams/{leagueId}          | x      |
-| DoubleLeagueTeams     | GET    | Get team by id      | DoubleLeagueTeams/team/{id}           | x      |
-| DoubleLeagueTeams     | POST   | Create new league   | DoubleLeagueTeams/{leagueId}/{teamId} | x      |
-| DoubleLeagueTeams     | DELETE | Delete league       | DoubleLeagueTeams/{leagueId}/{teamId} | x      |
-| FreehandDoubleGoals   | GET    | Get dlga by matchId | FreehandDoubleGoals/goals/{matchId}   | x      |
-| FreehandDoubleGoals   | GET    | get dlb by id       | DoubleLeagueGoals/{goalId}            | x      |
-| FreehandDoubleGoals   | POST   | Create dlg goal     | DoubleLeagueGoals                     |        |
-| FreehandDoubleGoals   | PATCH  | UPDATE dlg goal     | DoubleLeaguGoals                      |        |
-| FreehandDoubleGoals   | DELETE | Delete dlg goal     | DoubleLeagueGoals/{matchId}/{goalId}  |        |
-| FreehandDoubleMatches | GET    | Get fh matches      | FreehandDoubleMatches                 |        |
-| FreehandDoubleMatches | POST   | Create fh match     | FreehandDoubleMatches                 |        |
-| FreehandDoubleMatches | PATCH  | Update fdm          | FreehandDoubleMatches                 |        |
-| FreehandDoubleMatches | GET    | Get fdm by matchId  | FreehandDoubleMatches/{matchId}       |        |
-| FreehandDoubleMatches | DELETE | Delete fdm          | FreehandDoubleMatches/{matchId}       |        |
-| FreehandGoals         | GET    | Get goals by mId    | FreehandGoals/goals/{matchId}         |        |
-| FreehandGoals         | GET    | Get goal by gId     | FreehandGoals/{goalId}                |        |
-| FreehandGoals         | POST   | Create f goal       | FreehandGoals                         |        |
-| FreehandGoals         | PATCH  | Update f goal       | FreehandGoals                         |        |
-| FreehandGoals         | DELETE | Delete f goal       | FreehandGoals/{matchId}/{goalId}      |        |
-| FreehandMatches       | GET    | Get f matches       | FreehandMatches                       |        |
-| FreehandMatches       | POST   | Create f match      | FreehandMatches                       |        |
-| FreehandMatches       | PATCH  | Update f match      | FreehandMatches                       |        |
-| FreehandMatches       | Get    | Get f match by mID  | FreehandMatches/{matchId}             |        |
-| FreehandMatches       | DELETE | Delete f match      | FreehandMatches/{matchId}             |        |
-| Leagues               | GET    | Get leagus by org.  | Leagues/organisation                  |        |
-| Leagues               | GET    | Get league by id    | Leagues/{id}                          |        |
-| Leagues               | PATCH  | UPDATE league by id | Leagues/{id}                          |        |
-| Leagues               | GET    | Get league players  | Leagues/league-players                |        |
-| Leagues               | POST   | Create new league   | Leagues                               |        |
-| Leagues               | DELETE | Delete league by id | Leagues/{leagueId}                    |        |
-| Leagues               | GET    | Get leag. standings | Leagues/single-league/standings       |        |
-| Leagues               | GET    | Get dLeague stand.  | Leagues/double-league/standings       |        |
-| Organisations         | GET    | Get organisations   | Organisations                         |        |
-| Organisations         | POST   | Create organisation | Organisations                         |        |
-| Organisations         | GET    | Get org by id       | Organisations/{id}                    |        |
-| Organisations         | PATCH  | Update org by id    | Organisations/{id}                    |        |
-| Organisations         | DELETE | Delete org by id    | Organisations/{id}                    |        |
-| Organisations         | GET    | Get orgs by user    | Organisations/user                    |        |
-| SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                     |        |
-| SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                     |        |
-| SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}            |        |
-| SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}            |        |
-| SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                   |        |
-| SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                   |        |
-| SingleLeagueMatches   | GET    | Get sl match        | SingleLeagueMatches/{matchId}         |        |
-| SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match       |        |
-| Users                 | GET    | Get users           | Users                                 | x      |
-| Users                 | GET    | Get user by id      | Users/{id}                            | x      |
-| Users                 | PATCH  | Update user by id   | Users/{id}                            | x      |
-| Users                 | DELETE | Delete user by id   | Users/{id}                            | x      |
-| Users                 | GET    | Get user stats      | Users/stats                           | x      |
-| Users                 | GET    | Get last 10 matches | Users/last-ten-matches                | x      |
-| Users                 | GET    | Get history         | Users/history                         | x      |
+| Controller            | method | Name                | PATH                                   | Status |
+| --------------------- | ------ | ------------------- | -------------------------------------- | ------ |
+| Auth                  | POST   | Login               | Auth/login                             | x      |
+| Auth                  | POST   | register            | Auth/register                          | x      |
+| Auth                  | POST   | verify-email        | Auth/verify-email                      | x      |
+| Auth                  | POST   | forgot-password     | Auth/forgot-password                   |        |
+| Auth                  | POST   | reset-password      | Auth/reset-password                    |        |
+| Cms                   | POST   | hardcoded-string    | Cms/hardcoded-strings                  | x      |
+| DoubleLeagueGoals     | GET    | Get match by id     | DoubleLeagueGoals/match/{matchId}      | x      |
+| DoubleLeagueGoals     | GET    | Get goal by goalId  | DoubleLeagueGoals/{goalId}             | x      |
+| DoubleLeagueGoals     | DELETE | Delete dlg by ID    | DoubleLeagueGoals/{goalId}             | x      |
+| DoubleLeagueGoals     | POST   | Create new goal     | DoubleLeagueGoals                      | x      |
+| DoubleLeagueMatches   | GET    | Get all Dl matches  | DoubleLeagueMatches                    | x      |
+| DoubleLeagueMatches   | PATCH  | Update dl match     | DoubleLeagueMatches                    | x      |
+| DoubleLeagueMatches   | GET    | Get match by id     | DoubleLeagueMatches/match/{matchId}    | x      |
+| DoubleLeagueMatches   | PUT    | reset-match         | DoubleLeagueMatches/reset-match        | x      |
+| DoubleLeaguePlayers   | GET    | Gel all league pl   | DoubleLeaguePlayers/{leagueId}         | x      |
+| DoubleLeaguePlayers   | GET    | Get player by id    | DoubleLeaguePlayers/player/{id}        | x      |
+| DoubleLeagueTeams     | GET    | Get teams by l. id  | DoubleLeagueTeams/{leagueId}           | x      |
+| DoubleLeagueTeams     | GET    | Get team by id      | DoubleLeagueTeams/team/{id}            | x      |
+| DoubleLeagueTeams     | POST   | Create new league   | DoubleLeagueTeams/{leagueId}/{teamId}  | x      |
+| DoubleLeagueTeams     | DELETE | Delete league       | DoubleLeagueTeams/{leagueId}/{teamId}  | x      |
+| FreehandDoubleGoals   | GET    | Get dlga by matchId | FreehandDoubleGoals/goals/{matchId}    | x      |
+| FreehandDoubleGoals   | GET    | get dlb by id       | FreehandDoubleGoals/{goalId}           | x      |
+| FreehandDoubleGoals   | POST   | Create dlg goal     | FreehandDoubleGoals                    | x      |
+| FreehandDoubleGoals   | PATCH  | UPDATE dlg goal     | FreehandDoubleGoals                    |        |
+| FreehandDoubleGoals   | DELETE | Delete dlg goal     | FreehandDoubleGoals/{matchId}/{goalId} |        |
+| FreehandDoubleMatches | GET    | Get fh matches      | FreehandDoubleMatches                  |        |
+| FreehandDoubleMatches | POST   | Create fh match     | FreehandDoubleMatches                  |        |
+| FreehandDoubleMatches | PATCH  | Update fdm          | FreehandDoubleMatches                  |        |
+| FreehandDoubleMatches | GET    | Get fdm by matchId  | FreehandDoubleMatches/{matchId}        |        |
+| FreehandDoubleMatches | DELETE | Delete fdm          | FreehandDoubleMatches/{matchId}        |        |
+| FreehandGoals         | GET    | Get goals by mId    | FreehandGoals/goals/{matchId}          |        |
+| FreehandGoals         | GET    | Get goal by gId     | FreehandGoals/{goalId}                 |        |
+| FreehandGoals         | POST   | Create f goal       | FreehandGoals                          |        |
+| FreehandGoals         | PATCH  | Update f goal       | FreehandGoals                          |        |
+| FreehandGoals         | DELETE | Delete f goal       | FreehandGoals/{matchId}/{goalId}       |        |
+| FreehandMatches       | GET    | Get f matches       | FreehandMatches                        |        |
+| FreehandMatches       | POST   | Create f match      | FreehandMatches                        |        |
+| FreehandMatches       | PATCH  | Update f match      | FreehandMatches                        |        |
+| FreehandMatches       | Get    | Get f match by mID  | FreehandMatches/{matchId}              |        |
+| FreehandMatches       | DELETE | Delete f match      | FreehandMatches/{matchId}              |        |
+| Leagues               | GET    | Get leagus by org.  | Leagues/organisation                   |        |
+| Leagues               | GET    | Get league by id    | Leagues/{id}                           |        |
+| Leagues               | PATCH  | UPDATE league by id | Leagues/{id}                           |        |
+| Leagues               | GET    | Get league players  | Leagues/league-players                 |        |
+| Leagues               | POST   | Create new league   | Leagues                                |        |
+| Leagues               | DELETE | Delete league by id | Leagues/{leagueId}                     |        |
+| Leagues               | GET    | Get leag. standings | Leagues/single-league/standings        |        |
+| Leagues               | GET    | Get dLeague stand.  | Leagues/double-league/standings        |        |
+| Organisations         | GET    | Get organisations   | Organisations                          |        |
+| Organisations         | POST   | Create organisation | Organisations                          |        |
+| Organisations         | GET    | Get org by id       | Organisations/{id}                     |        |
+| Organisations         | PATCH  | Update org by id    | Organisations/{id}                     |        |
+| Organisations         | DELETE | Delete org by id    | Organisations/{id}                     |        |
+| Organisations         | GET    | Get orgs by user    | Organisations/user                     |        |
+| SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                      |        |
+| SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                      |        |
+| SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             |        |
+| SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             |        |
+| SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    |        |
+| SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                    |        |
+| SingleLeagueMatches   | GET    | Get sl match        | SingleLeagueMatches/{matchId}          |        |
+| SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match        |        |
+| Users                 | GET    | Get users           | Users                                  | x      |
+| Users                 | GET    | Get user by id      | Users/{id}                             | x      |
+| Users                 | PATCH  | Update user by id   | Users/{id}                             | x      |
+| Users                 | DELETE | Delete user by id   | Users/{id}                             | x      |
+| Users                 | GET    | Get user stats      | Users/stats                            | x      |
+| Users                 | GET    | Get last 10 matches | Users/last-ten-matches                 | x      |
+| Users                 | GET    | Get history         | Users/history                          | x      |

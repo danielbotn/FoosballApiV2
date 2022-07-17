@@ -81,31 +81,31 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpPost("")]
-        // [ProducesResponseType(typeof(FreehandDoubleGoalReadDto), StatusCodes.Status201Created)]
-        // public ActionResult CreateFreehandDoubleGoal([FromBody] FreehandDoubleGoalCreateDto freehandGoalCreateDto)
-        // {
-        //     try
-        //     {
-        //         int matchId = freehandGoalCreateDto.DoubleMatchId;
-        //         string userId = User.Identity.Name;
+        [HttpPost("")]
+        [ProducesResponseType(typeof(FreehandDoubleGoalReadDto), StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateFreehandDoubleGoal([FromBody] FreehandDoubleGoalCreateDto freehandGoalCreateDto)
+        {
+            try
+            {
+                int matchId = freehandGoalCreateDto.DoubleMatchId;
+                string userId = User.Identity.Name;
 
-        //         bool matchAccess = _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), matchId);
+                bool matchAccess = await _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), matchId);
 
-        //         if (!matchAccess)
-        //             return Forbid();
+                if (!matchAccess)
+                    return Forbid();
 
-        //         var newGoal = _doubleFreehandGoalservice.CreateDoubleFreehandGoal(int.Parse(userId), freehandGoalCreateDto);
+                var newGoal = await _doubleFreehandGoalservice.CreateDoubleFreehandGoal(int.Parse(userId), freehandGoalCreateDto);
 
-        //         var freehandGoalReadDto = _mapper.Map<FreehandDoubleGoalReadDto>(newGoal);
+                var freehandGoalReadDto = _mapper.Map<FreehandDoubleGoalReadDto>(newGoal);
 
-        //         return CreatedAtRoute("GetFreehandDoubleGoalById", new { goalId = newGoal.Id }, freehandGoalReadDto);
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+                return CreatedAtRoute("GetFreehandDoubleGoalById", new { goalId = newGoal.Id }, freehandGoalReadDto);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         // [HttpDelete("{matchId}/{goalId}")]
         // [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -11,7 +11,7 @@ namespace FoosballApi.Services
         Task<IEnumerable<FreehandDoubleGoalsExtendedDto>> GetAllFreehandGoals(int matchId, int userId);
         Task<FreehandDoubleGoalModel> GetFreehandDoubleGoal(int goalId);
         Task<bool> CheckGoalPermission(int userId, int matchId, int goalId);
-        FreehandDoubleGoalModel CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto);
+        Task<FreehandDoubleGoalModel> CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto);
         void DeleteFreehandGoal(FreehandDoubleGoalModel goalItem);
         void UpdateFreehanDoubledGoal(FreehandDoubleGoalModel goalItem);
         bool SaveChanges();
@@ -57,9 +57,89 @@ namespace FoosballApi.Services
             return false;
         }
 
-        public FreehandDoubleGoalModel CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto)
+        private async Task<FreehandDoubleMatchModel> GetFreehandDoubleMatchesById(int id)
         {
-            throw new NotImplementedException();
+            // þarf að athuga þetta
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                var sql = @"
+                    SELECT id as Id, player_one_team_a as PlayerOneTeamA,
+                    player_two_team_a as PlayerTwoTeamA, player_one_team_b as PlayerOneTeamB,
+                    player_two_team_b as PlayerTwoTeamB, organisation_id as OrganisationId, start_time as StartTime, end_time as EndtTime,
+                    team_a_score as TeamAScore, team_b_score as TeamBScore, up_to as UpTo, game_finished as GameFinished, game_paused as GamePaused
+                    FROM freehand_double_matches
+                    WHERE id = @id";
+                return await connection.QueryFirstOrDefaultAsync<FreehandDoubleMatchModel>(sql, new { id = id });
+            }
+        }
+
+        private async void UpdateFreehandDoubleMatchScore(int userId, FreehandDoubleGoalCreateDto freehandGoalCreateDto)
+        {
+            FreehandDoubleMatchModel fmm = await GetFreehandDoubleMatchesById(freehandGoalCreateDto.DoubleMatchId);
+            if (fmm.PlayerOneTeamA == freehandGoalCreateDto.ScoredByUserId || fmm.PlayerTwoTeamA == freehandGoalCreateDto.ScoredByUserId)
+            {
+                fmm.TeamAScore = freehandGoalCreateDto.ScorerTeamScore;
+            }
+            else
+            {
+                fmm.TeamBScore = freehandGoalCreateDto.ScorerTeamScore;
+            }
+
+            // Check if match is finished
+            if (freehandGoalCreateDto.WinnerGoal == true)
+            {
+                fmm.EndTime = DateTime.Now;
+                fmm.GameFinished = true;
+            }
+
+            // update freehand double match using dapper
+            // Það þarf að athuga þetta
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                var sql = @"
+                    UPDATE freehand_double_matches
+                    SET team_a_score = @team_a_score, team_b_score = @team_b_score
+                    WHERE id = @id";
+                await connection.ExecuteAsync(sql, new {
+                    team_a_score = fmm.TeamAScore,
+                    team_b_score = fmm.TeamBScore,
+                    id = fmm.Id
+                });
+            }
+        }
+
+        public async Task<FreehandDoubleGoalModel> CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto)
+        {
+            FreehandDoubleGoalModel fhg = new FreehandDoubleGoalModel();
+            DateTime now = DateTime.Now;
+            fhg.DoubleMatchId = freehandDoubleGoalCreateDto.DoubleMatchId;
+            fhg.OpponentTeamScore = freehandDoubleGoalCreateDto.OpponentTeamScore;
+            fhg.ScoredByUserId = freehandDoubleGoalCreateDto.ScoredByUserId;
+            fhg.ScorerTeamScore = freehandDoubleGoalCreateDto.ScorerTeamScore;
+            fhg.TimeOfGoal = now;
+            fhg.WinnerGoal = freehandDoubleGoalCreateDto.WinnerGoal;
+            
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var nGoal = await conn.ExecuteAsync(
+                    @"INSERT INTO freehand_double_goals (time_of_goal, double_match_id, scored_by_user_id, scorer_team_score, opponent_team_score, winner_goal)
+                    VALUES (@time_of_goal, @double_match_id, @scored_by_user_id, @scorer_team_score, @opponent_team_score, @winner_goal)
+                    RETURNING id",
+                    new { 
+                        time_of_goal = now, 
+                        double_match_id = freehandDoubleGoalCreateDto.DoubleMatchId, 
+                        scored_by_user_id = freehandDoubleGoalCreateDto.ScoredByUserId,
+                        scorer_team_score = freehandDoubleGoalCreateDto.ScorerTeamScore,
+                        opponent_team_score = freehandDoubleGoalCreateDto.ScorerTeamScore,
+                        winner_goal = freehandDoubleGoalCreateDto.WinnerGoal,
+                    });
+               
+                fhg.Id = nGoal;
+            }
+
+            UpdateFreehandDoubleMatchScore(userId, freehandDoubleGoalCreateDto);
+
+            return fhg;
         }
 
         public void DeleteFreehandGoal(FreehandDoubleGoalModel goalItem)
