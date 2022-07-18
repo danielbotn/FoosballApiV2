@@ -107,31 +107,31 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpDelete("{matchId}/{goalId}")]
-        // [ProducesResponseType(StatusCodes.Status204NoContent)]
-        // public ActionResult DeleteDoubleFreehandGoal(string goalId, string matchId)
-        // {
-        //     try
-        //     {
-        //         string userId = User.Identity.Name;
-        //         var goalItem = _doubleFreehandGoalservice.GetFreehandDoubleGoal(int.Parse(goalId));
-        //         if (goalItem == null)
-        //             return NotFound();
+        [HttpDelete("{matchId}/{goalId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> DeleteDoubleFreehandGoal(string goalId, string matchId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                var goalItem = await _doubleFreehandGoalservice.GetFreehandDoubleGoal(int.Parse(goalId));
+                if (goalItem == null)
+                    return NotFound();
 
-        //         bool hasPermission = _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), int.Parse(matchId));
+                bool hasPermission = await _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), int.Parse(matchId));
 
-        //         if (!hasPermission)
-        //             return Forbid();
+                if (!hasPermission)
+                    return Forbid();
 
-        //         _doubleFreehandGoalservice.DeleteFreehandGoal(goalItem);
+                _doubleFreehandGoalservice.DeleteFreehandGoal(goalItem);
 
-        //         return NoContent();
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         // [HttpPatch()]
         // [ProducesResponseType(StatusCodes.Status204NoContent)]
