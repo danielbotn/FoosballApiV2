@@ -133,45 +133,43 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpPatch()]
-        // [ProducesResponseType(StatusCodes.Status204NoContent)]
-        // public ActionResult UpdateFreehandDoubleGoal(int goalId, int matchId, JsonPatchDocument<FreehandDoubleGoalUpdateDto> patchDoc)
-        // {
-        //     try
-        //     {
-        //         string userId = User.Identity.Name;
-        //         var goalItem = _doubleFreehandGoalservice.GetFreehandDoubleGoal(goalId);
-        //         if (goalItem == null)
-        //             return NotFound();
+        [HttpPatch()]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> UpdateFreehandDoubleGoal(int goalId, int matchId, JsonPatchDocument<FreehandDoubleGoalUpdateDto> patchDoc)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                var goalItem = await _doubleFreehandGoalservice.GetFreehandDoubleGoal(goalId);
+                if (goalItem == null)
+                    return NotFound();
 
-        //         bool matchPermission = _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), matchId);
+                bool matchPermission = await _doubleFreehandMatchService.CheckMatchPermission(int.Parse(userId), matchId);
 
-        //         if (!matchPermission)
-        //             return Forbid();
+                if (!matchPermission)
+                    return Forbid();
 
-        //         bool goalPermission = _doubleFreehandGoalservice.CheckGoalPermission(int.Parse(userId), matchId, goalId);
+                bool goalPermission = await _doubleFreehandGoalservice.CheckGoalPermission(int.Parse(userId), matchId, goalId);
 
-        //         if (!goalPermission)
-        //             return Forbid();
+                if (!goalPermission)
+                    return Forbid();
 
-        //         var freehandGoalToPatch = _mapper.Map<FreehandDoubleGoalUpdateDto>(goalItem);
-        //         patchDoc.ApplyTo(freehandGoalToPatch, ModelState);
+                var freehandGoalToPatch = _mapper.Map<FreehandDoubleGoalUpdateDto>(goalItem);
+                patchDoc.ApplyTo(freehandGoalToPatch, ModelState);
 
-        //         if (!TryValidateModel(freehandGoalToPatch))
-        //             return ValidationProblem(ModelState);
+                if (!TryValidateModel(freehandGoalToPatch))
+                    return ValidationProblem(ModelState);
 
-        //         _mapper.Map(freehandGoalToPatch, goalItem);
+                _mapper.Map(freehandGoalToPatch, goalItem);
 
-        //         _doubleFreehandGoalservice.UpdateFreehanDoubledGoal(goalItem);
+                _doubleFreehandGoalservice.UpdateFreehanDoubledGoal(goalItem);
 
-        //         _doubleFreehandGoalservice.SaveChanges();
-
-        //         return NoContent();
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

@@ -14,7 +14,6 @@ namespace FoosballApi.Services
         Task<FreehandDoubleGoalModel> CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto);
         void DeleteFreehandGoal(FreehandDoubleGoalModel goalItem);
         void UpdateFreehanDoubledGoal(FreehandDoubleGoalModel goalItem);
-        bool SaveChanges();
     }
 
     public class FreehandDoubleGoalService : IFreehandDoubleGoalService
@@ -284,14 +283,29 @@ namespace FoosballApi.Services
             throw new NotImplementedException();
         }
 
-        public bool SaveChanges()
-        {
-            throw new NotImplementedException();
-        }
-
         public void UpdateFreehanDoubledGoal(FreehandDoubleGoalModel goalItem)
         {
-            throw new NotImplementedException();
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE freehand_double_goals 
+                    SET time_of_goal = @time_of_goal, 
+                    double_match_id = @double_match_id, 
+                    scored_by_user_id = @scored_by_user_id, 
+                    scorer_team_score = @scorer_team_score, 
+                    opponent_team_score = @opponent_team_score, 
+                    winner_goal = @winner_goal
+                    WHERE id = @id",
+                    new { 
+                        time_of_goal = goalItem.TimeOfGoal,
+                        double_match_id = goalItem.DoubleMatchId,
+                        scored_by_user_id = goalItem.ScoredByUserId,
+                        scorer_team_score = goalItem.ScorerTeamScore,
+                        opponent_team_score = goalItem.OpponentTeamScore,
+                        winner_goal = goalItem.WinnerGoal,
+                        id = goalItem.Id
+                     });
+            }
         }
     }
 }
