@@ -2,6 +2,7 @@ using AutoMapper;
 using FoosballApi.Dtos.DoubleMatches;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoosballApi.Controllers
@@ -87,6 +88,41 @@ namespace FoosballApi.Controllers
             var freehandDoubleMatchReadDto = _mapper.Map<FreehandDoubleMatchResponseDto>(newMatch);
 
             return CreatedAtRoute("GetFreehandDoubleMatchByMatchId", new { matchId = newMatch.Id }, freehandDoubleMatchReadDto);
+        }
+
+        [HttpPatch()]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> UpdateDoubleFreehandMatch(int matchId, JsonPatchDocument<FreehandDoubleMatchUpdateDto> patchDoc)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                var matchItem = await _doubleMatchService.GetFreehandDoubleMatchById(matchId);
+                if (matchItem == null)
+                    return NotFound();
+
+                bool hasPermission = await _doubleMatchService.CheckMatchPermission(int.Parse(userId), matchId);
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var freehandMatchToPatch = _mapper.Map<FreehandDoubleMatchUpdateDto>(matchItem);
+                patchDoc.ApplyTo(freehandMatchToPatch, ModelState);
+
+                if (!TryValidateModel(freehandMatchToPatch))
+                    return ValidationProblem(ModelState);
+
+                _mapper.Map(freehandMatchToPatch, matchItem);
+
+                _doubleMatchService.UpdateFreehandMatch(matchItem);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
         }
     }
 }

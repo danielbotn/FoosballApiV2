@@ -12,6 +12,8 @@ namespace FoosballApi.Services
         Task<IEnumerable<FreehandDoubleMatchModel>> GetAllFreehandDoubleMatches(int userId);
         Task<FreehandDoubleMatchModelExtended> GetFreehandDoubleMatchByIdExtended(int matchId);
         Task<FreehandDoubleMatchModel> CreateFreehandDoubleMatch(int userId, FreehandDoubleMatchCreateDto freehandDoubleMatchCreateDto);
+        Task<FreehandDoubleMatchModel> GetFreehandDoubleMatchById(int matchId);
+        void UpdateFreehandMatch(FreehandDoubleMatchModel freehandMatchModel);
     }
 
     public class FreehandDoubleMatchService : IFreehandDoubleMatchService
@@ -85,7 +87,7 @@ namespace FoosballApi.Services
             }
         }
 
-        private async Task<FreehandDoubleMatchModel> GetFreehandDoubleMatchById(int matchId)
+        public async Task<FreehandDoubleMatchModel> GetFreehandDoubleMatchById(int matchId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
@@ -249,6 +251,48 @@ namespace FoosballApi.Services
 
             var result = await InsertNewFreehandDoubleMatch(fdm); 
             return result;
+        }
+
+        public void UpdateFreehandMatch(FreehandDoubleMatchModel freehandMatchModel)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE freehand_double_matches
+                    SET player_one_team_a = @player_one_team_a, 
+                    player_two_team_a = @player_two_team_a, 
+                    player_one_team_b = @player_one_team_b, 
+                    player_two_team_b = @player_two_team_b, 
+                    organisation_id = @organisation_id, 
+                    start_time = @start_time,
+                    end_time = @end_time,
+                    team_a_score = @team_a_score,
+                    team_b_score = @team_b_score,
+                    nickname_team_a = @nickname_team_a,
+                    nickname_team_b = @nickname_team_b,
+                    up_to = @up_to,
+                    game_finished = @game_finished,
+                    game_paused = @game_paused
+                    WHERE id = @id",
+                   
+                    new { 
+                        player_one_team_a = freehandMatchModel.PlayerOneTeamA,
+                        player_two_team_a = freehandMatchModel.PlayerTwoTeamA,
+                        player_one_team_b = freehandMatchModel.PlayerOneTeamB,
+                        player_two_team_b = freehandMatchModel.PlayerTwoTeamB,
+                        organisation_id = freehandMatchModel.OrganisationId,
+                        start_time = freehandMatchModel.StartTime,
+                        end_time = freehandMatchModel.EndTime,
+                        team_a_score = freehandMatchModel.TeamAScore,
+                        team_b_score = freehandMatchModel.TeamBScore,
+                        nickname_team_a = freehandMatchModel.NicknameTeamA,
+                        nickname_team_b = freehandMatchModel.NicknameTeamB,
+                        up_to = freehandMatchModel.UpTo,
+                        game_finished = freehandMatchModel.GameFinished,
+                        game_paused = freehandMatchModel.GamePaused,
+                        id = freehandMatchModel.Id
+                     });
+            }
         }
     }
 }
