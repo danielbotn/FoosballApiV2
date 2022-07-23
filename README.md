@@ -471,10 +471,10 @@ These endpoints should be implemented
 | FreehandDoubleGoals   | POST   | Create dlg goal     | FreehandDoubleGoals                    | x      |
 | FreehandDoubleGoals   | PATCH  | UPDATE dlg goal     | FreehandDoubleGoals                    | x      |
 | FreehandDoubleGoals   | DELETE | Delete dlg goal     | FreehandDoubleGoals/{matchId}/{goalId} | x      |
-| FreehandDoubleMatches | GET    | Get fh matches      | FreehandDoubleMatches                  |        |
+| FreehandDoubleMatches | GET    | Get fh matches      | FreehandDoubleMatches                  | x      |
 | FreehandDoubleMatches | POST   | Create fh match     | FreehandDoubleMatches                  |        |
 | FreehandDoubleMatches | PATCH  | Update fdm          | FreehandDoubleMatches                  |        |
-| FreehandDoubleMatches | GET    | Get fdm by matchId  | FreehandDoubleMatches/{matchId}        |        |
+| FreehandDoubleMatches | GET    | Get fdm by matchId  | FreehandDoubleMatches/{matchId}        | x      |
 | FreehandDoubleMatches | DELETE | Delete fdm          | FreehandDoubleMatches/{matchId}        |        |
 | FreehandGoals         | GET    | Get goals by mId    | FreehandGoals/goals/{matchId}          |        |
 | FreehandGoals         | GET    | Get goal by gId     | FreehandGoals/{goalId}                 |        |
