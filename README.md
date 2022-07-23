@@ -475,7 +475,7 @@ These endpoints should be implemented
 | FreehandDoubleMatches | POST   | Create fh match     | FreehandDoubleMatches                  | x      |
 | FreehandDoubleMatches | PATCH  | Update fdm          | FreehandDoubleMatches                  | x      |
 | FreehandDoubleMatches | GET    | Get fdm by matchId  | FreehandDoubleMatches/{matchId}        | x      |
-| FreehandDoubleMatches | DELETE | Delete fdm          | FreehandDoubleMatches/{matchId}        |        |
+| FreehandDoubleMatches | DELETE | Delete fdm          | FreehandDoubleMatches/{matchId}        | x      |
 | FreehandGoals         | GET    | Get goals by mId    | FreehandGoals/goals/{matchId}          |        |
 | FreehandGoals         | GET    | Get goal by gId     | FreehandGoals/{goalId}                 |        |
 | FreehandGoals         | POST   | Create f goal       | FreehandGoals                          |        |

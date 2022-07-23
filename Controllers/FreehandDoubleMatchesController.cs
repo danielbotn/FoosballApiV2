@@ -124,5 +124,31 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpDelete("{matchId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> DeleteDoubleFreehandMatch(int matchId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                var matchItem = await _doubleMatchService.GetFreehandDoubleMatchById(matchId);
+                if (matchItem == null)
+                    return NotFound();
+
+                bool hasPermission = await _doubleMatchService.CheckMatchPermission(int.Parse(userId), matchId);
+
+                if (!hasPermission)
+                    return Forbid();
+
+                _doubleMatchService.DeleteFreehandMatch(matchItem);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
