@@ -1,4 +1,5 @@
 using Dapper;
+using FoosballApi.Dtos.DoubleMatches;
 using FoosballApi.Models;
 using FoosballApi.Models.Matches;
 using Npgsql;
@@ -10,6 +11,7 @@ namespace FoosballApi.Services
         Task<bool> CheckMatchPermission(int userId, int matchId);
         Task<IEnumerable<FreehandDoubleMatchModel>> GetAllFreehandDoubleMatches(int userId);
         Task<FreehandDoubleMatchModelExtended> GetFreehandDoubleMatchByIdExtended(int matchId);
+        Task<FreehandDoubleMatchModel> CreateFreehandDoubleMatch(int userId, FreehandDoubleMatchCreateDto freehandDoubleMatchCreateDto);
     }
 
     public class FreehandDoubleMatchService : IFreehandDoubleMatchService
@@ -183,6 +185,70 @@ namespace FoosballApi.Services
                 GamePaused = data.GamePaused
             };
             return fdme;
+        }
+
+        private async Task<FreehandDoubleMatchModel> InsertNewFreehandDoubleMatch(FreehandDoubleMatchModel fdm)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var data = await conn.QueryFirstOrDefaultAsync<FreehandDoubleMatchModel>(
+                    @"INSERT INTO freehand_double_matches (player_one_team_a, player_two_team_a, player_one_team_b, player_two_team_b, organisation_id, start_time, end_time, team_a_score, team_b_score, nickname_team_a, nickname_team_b, up_to, game_finished, game_paused)
+                    VALUES (@playerOneTeamA, @playerTwoTeamA, @playerOneTeamB, @playerTwoTeamB, @organisationId, @startTime, @endTime, @teamAScore, @teamBScore, @nicknameTeamA, @nicknameTeamB, @upTo, @gameFinished, @gamePaused)
+                    RETURNING id as Id, player_one_team_a as PlayerOneTeamA, player_two_team_a as PlayerTwoTeamA,
+                    player_one_team_b as PlayerOneTeamB, player_two_team_b as PlayerTwoTeamB,
+                    organisation_id as OrganisationId, start_time as StartTime, end_time as EndTime,
+                    team_a_score as TeamAScore, team_b_score as TeamBScore, nickname_team_a as NicknameTeamA,
+                    nickname_team_b as NicknameTeamB, up_to as UpTo, game_finished as GameFinished,
+                    game_paused as GamePaused
+                    ",
+                    new { 
+                        fdm.PlayerOneTeamA, 
+                        fdm.PlayerTwoTeamA, 
+                        fdm.PlayerOneTeamB, 
+                        fdm.PlayerTwoTeamB, 
+                        fdm.OrganisationId, 
+                        fdm.StartTime, 
+                        fdm.EndTime, 
+                        fdm.TeamAScore, 
+                        fdm.TeamBScore, 
+                        fdm.NicknameTeamA, 
+                        fdm.NicknameTeamB, 
+                        fdm.UpTo, 
+                        fdm.GameFinished, 
+                        fdm.GamePaused 
+                    });
+                return data;
+            }
+        }
+
+        public async Task<FreehandDoubleMatchModel> CreateFreehandDoubleMatch(int userId, FreehandDoubleMatchCreateDto freehandDoubleMatchCreateDto)
+        {
+            FreehandDoubleMatchModel fdm = new FreehandDoubleMatchModel();
+            DateTime now = DateTime.Now;
+            fdm.OrganisationId = freehandDoubleMatchCreateDto.OrganisationId;
+            fdm.PlayerOneTeamA = freehandDoubleMatchCreateDto.PlayerOneTeamA;
+            fdm.PlayerOneTeamB = freehandDoubleMatchCreateDto.PlayerOneTeamB;
+            fdm.PlayerTwoTeamA = freehandDoubleMatchCreateDto.PlayerTwoTeamA;
+            fdm.PlayerTwoTeamB = freehandDoubleMatchCreateDto.PlayerTwoTeamB;
+            fdm.StartTime = now;
+            fdm.EndTime = null;
+            fdm.TeamAScore = freehandDoubleMatchCreateDto.TeamAScore;
+            fdm.TeamBScore = freehandDoubleMatchCreateDto.TeamBScore;
+
+            if (!string.IsNullOrEmpty(freehandDoubleMatchCreateDto.NicknameTeamA))
+                fdm.NicknameTeamA = freehandDoubleMatchCreateDto.NicknameTeamA;
+
+            if (!string.IsNullOrEmpty(freehandDoubleMatchCreateDto.NicknameTeamB))
+                fdm.NicknameTeamB = freehandDoubleMatchCreateDto.NicknameTeamB;
+
+            if (freehandDoubleMatchCreateDto.UpTo != null)
+                fdm.UpTo = freehandDoubleMatchCreateDto.UpTo;
+
+            fdm.GameFinished = false;
+            fdm.GamePaused = false;
+
+            var result = await InsertNewFreehandDoubleMatch(fdm); 
+            return result;
         }
     }
 }

@@ -67,5 +67,26 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpPost()]
+        [ProducesResponseType(typeof(FreehandDoubleMatchResponseDto), StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateDoubleFreehandMatch([FromBody] FreehandDoubleMatchCreateDto freehandDoubleMatchCreateDto)
+        {
+            string userId = User.Identity.Name;
+
+            if (freehandDoubleMatchCreateDto.PlayerOneTeamA != int.Parse(userId) 
+                && freehandDoubleMatchCreateDto.PlayerOneTeamB != int.Parse(userId)
+                && freehandDoubleMatchCreateDto.PlayerTwoTeamA != int.Parse(userId)
+                && freehandDoubleMatchCreateDto.PlayerTwoTeamB != int.Parse(userId))
+            {
+                return Forbid();
+            }
+
+            var newMatch = await _doubleMatchService.CreateFreehandDoubleMatch(int.Parse(userId), freehandDoubleMatchCreateDto);
+
+            var freehandDoubleMatchReadDto = _mapper.Map<FreehandDoubleMatchResponseDto>(newMatch);
+
+            return CreatedAtRoute("GetFreehandDoubleMatchByMatchId", new { matchId = newMatch.Id }, freehandDoubleMatchReadDto);
+        }
     }
 }
