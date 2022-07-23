@@ -280,7 +280,6 @@ namespace FoosballApi.Services
                     new { id = goalId });
                 return match;
             }
-            throw new NotImplementedException();
         }
 
         public void UpdateFreehanDoubledGoal(FreehandDoubleGoalModel goalItem)

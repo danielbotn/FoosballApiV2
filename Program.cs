@@ -71,6 +71,8 @@ builder.Services.AddScoped<IDoubleLeaguePlayerService, DoubleLeaguePlayerService
 builder.Services.AddScoped<IDoubleLeagueTeamService, DoubleLeagueTeamService>();
 builder.Services.AddScoped<IFreehandDoubleGoalService, FreehandDoubleGoalService>();
 builder.Services.AddScoped<IFreehandDoubleMatchService, FreehandDoubleMatchService>();
+builder.Services.AddScoped<IFreehandMatchService, FreehandMatchService>();
+builder.Services.AddScoped<IFreehandGoalService, FreehandGoalService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
