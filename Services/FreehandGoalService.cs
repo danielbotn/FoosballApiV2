@@ -8,6 +8,8 @@ namespace FoosballApi.Services
     public interface IFreehandGoalService
     {
         Task<IEnumerable<FreehandGoalModelExtended>> GetFreehandGoalsByMatchId(int matchId, int userId);
+        Task<bool> CheckGoalPermission(int userId, int matchId, int goalId);
+        Task<FreehandGoalModelExtended> GetFreehandGoalById(int goalId);
     }
     public class FreehandGoalService : IFreehandGoalService
     {
@@ -142,6 +144,67 @@ namespace FoosballApi.Services
                 };
                 result.Add(fgme);
             }
+
+            return result;
+        }
+
+        public async Task<bool> CheckGoalPermission(int userId, int matchId, int goalId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var data = await conn.QueryFirstOrDefaultAsync<FreehandGoalPermission>(
+                    @"SELECT fg.match_id as MatchId, fg.scored_by_user_Id as ScoredByUserId, 
+                    fm. player_one_Id as PlayerOneId, fm.player_two_id as PlayerTwoId
+                    FROM freehand_goals fg
+                    JOIN freehand_matches fm ON fg.match_id = fm.id
+                    WHERE fg.match_id = @match_id AND fg.id = @goal_id",
+                    new { match_id = matchId, goal_id = goalId });
+
+                if (data.MatchId == matchId && (userId == data.PlayerOneId || userId == data.PlayerTwoId))
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        private async Task<FreehandGoalModel> GetFreehandGoalByIdDapper(int goalId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var goal = await conn.QueryFirstOrDefaultAsync<FreehandGoalModel>(
+                    @"SELECT id as Id, time_of_goal as TimeOfGoal, match_id as MatchId,
+                    scored_by_user_id as ScoredByUserId, Oponent_id as OponentId,
+                    scored_by_score as ScoredByScore, oponent_score as OponentScore,
+                    winner_goal as WinnerGoal
+                    FROM freehand_goals
+                    WHERE id = @goal_id",
+                    new { goal_id = goalId });
+                return goal;
+            }
+        }
+
+        public async Task<FreehandGoalModelExtended> GetFreehandGoalById(int goalId)
+        {
+            var data = await GetFreehandGoalByIdDapper(goalId);
+
+            FreehandGoalModelExtended result = new FreehandGoalModelExtended
+            {
+                Id = data.Id,
+                TimeOfGoal = data.TimeOfGoal,
+                MatchId = data.MatchId,
+                ScoredByUserId = data.ScoredByUserId,
+                ScoredByUserFirstName = await GetFirstNameOfUser(data.ScoredByUserId),
+                ScoredByUserLastName = await GetLastNameOfUser(data.ScoredByUserId),
+                ScoredByUserPhotoUrl = await GetPhotoUrlOfUser(data.ScoredByUserId),
+                OponentId = data.OponentId,
+                OponentFirstName = await GetFirstNameOfUser(data.OponentId),
+                OponentLastName = await GetLastNameOfUser(data.OponentId),
+                OponentPhotoUrl = await GetPhotoUrlOfUser(data.OponentId),
+                ScoredByScore = data.ScoredByScore,
+                OponentScore = data.OponentScore,
+                WinnerGoal = data.WinnerGoal
+            };
 
             return result;
         }

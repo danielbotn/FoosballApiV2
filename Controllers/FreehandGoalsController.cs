@@ -47,5 +47,37 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("{goalId}", Name = "GetFreehandGoalById")]
+        [ProducesResponseType(typeof(FreehandGoalReadDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<FreehandGoalReadDto>> GetFreehandGoalById(int matchId)
+        {
+            try
+            {
+                string goalId = RouteData.Values["goalId"].ToString();
+                string userId = User.Identity.Name;
+
+                bool matchPermission = await _matchService.CheckFreehandMatchPermission(matchId, int.Parse(userId));
+
+                if (!matchPermission)
+                    return Forbid();
+
+                bool goalPermission = await _goalService.CheckGoalPermission(int.Parse(userId), matchId, int.Parse(goalId));
+
+                if (!goalPermission)
+                    return Forbid();
+
+                var allMatches = await _goalService.GetFreehandGoalById(int.Parse(goalId));
+
+                if (allMatches == null)
+                    return NotFound();
+
+                return Ok(_mapper.Map<FreehandGoalReadDto>(allMatches));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
