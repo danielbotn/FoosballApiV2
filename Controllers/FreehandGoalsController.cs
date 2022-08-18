@@ -79,5 +79,34 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpPost("")]
+        [ProducesResponseType(typeof(FreehandGoalCreateResultDto), StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateFreehandGoal([FromBody] FreehandGoalCreateDto freehandGoalCreateDto)
+        {
+            try
+            {
+                int matchId = freehandGoalCreateDto.MatchId;
+                string userId = User.Identity.Name;
+
+                bool access = await _matchService.CheckFreehandMatchPermission(matchId, int.Parse(userId));
+
+                if (!access)
+                    return Forbid();
+                
+                if (freehandGoalCreateDto.ScoredByUserId != int.Parse(userId) && freehandGoalCreateDto.OponentId != int.Parse(userId))
+                    return Forbid();
+
+                var newGoal = await _goalService.CreateFreehandGoal(int.Parse(userId), freehandGoalCreateDto);
+
+                var freehandGoalReadDto = _mapper.Map<FreehandGoalCreateResultDto>(newGoal);
+
+                return CreatedAtRoute("GetFreehandGoalById", new { goalId = newGoal.Id }, freehandGoalReadDto);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
