@@ -480,7 +480,7 @@ These endpoints should be implemented
 | FreehandGoals         | GET    | Get goal by gId     | FreehandGoals/{goalId}                 | x      |
 | FreehandGoals         | POST   | Create f goal       | FreehandGoals                          | x      |
 | FreehandGoals         | PATCH  | Update f goal       | FreehandGoals                          | x      |
-| FreehandGoals         | DELETE | Delete f goal       | FreehandGoals/{matchId}/{goalId}       |        |
+| FreehandGoals         | DELETE | Delete f goal       | FreehandGoals/{matchId}/{goalId}       | x      |
 | FreehandMatches       | GET    | Get f matches       | FreehandMatches                        |        |
 | FreehandMatches       | POST   | Create f match      | FreehandMatches                        |        |
 | FreehandMatches       | PATCH  | Update f match      | FreehandMatches                        |        |
