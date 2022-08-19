@@ -12,6 +12,8 @@ namespace FoosballApi.Services
         Task<IEnumerable<FreehandMatchModelExtended>> GetAllFreehandMatches(int userId);
         Task<FreehandMatchModelExtended> GetFreehandMatchById(int matchId);
         Task<FreehandMatchModel> CreateFreehandMatch(int userId, int organisationId, FreehandMatchCreateDto freehandMatchCreateDto);
+        Task<FreehandMatchModel> GetFreehandMatchByIdFromDatabase(int matchId);
+        void UpdateFreehandMatch(FreehandMatchModel freehandMatchModel);
     }
     public class FreehandMatchService : IFreehandMatchService
     {
@@ -279,6 +281,39 @@ namespace FoosballApi.Services
             }
 
             return fmm;
+        }
+
+        public async Task<FreehandMatchModel> GetFreehandMatchByIdFromDatabase(int matchId)
+        {
+            var data = await GetMatchById(matchId);
+            return data;
+        }
+
+        public void UpdateFreehandMatch(FreehandMatchModel freehandMatchModel)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE freehand_matches
+                    SET player_one_id = @player_one_id, player_two_id = @player_two_id, player_one_score = @player_one_score, 
+                    player_two_score = @player_two_score, start_time = @start_time, end_time = @end_time, game_finished = @game_finished, 
+                    game_paused = @game_paused, up_to = @up_to, organisation_id = @organisation_id
+                    WHERE id = @id",
+                    new
+                    {
+                        id = freehandMatchModel.Id,
+                        player_one_id = freehandMatchModel.PlayerOneId,
+                        player_two_id = freehandMatchModel.PlayerTwoId,
+                        player_one_score = freehandMatchModel.PlayerOneScore,
+                        player_two_score = freehandMatchModel.PlayerTwoScore,
+                        start_time = freehandMatchModel.StartTime,
+                        end_time = freehandMatchModel.EndTime,
+                        game_finished = freehandMatchModel.GameFinished,
+                        game_paused = freehandMatchModel.GamePaused,
+                        up_to = freehandMatchModel.UpTo,
+                        organisation_id = freehandMatchModel.OrganisationId
+                    });
+            }
         }
     }
 }

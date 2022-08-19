@@ -3,6 +3,7 @@ using FoosballApi.Dtos.Matches;
 using FoosballApi.Models.Matches;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoosballApi.Controllers
@@ -88,6 +89,40 @@ namespace FoosballApi.Controllers
                 var freehandMatchesReadDto = _mapper.Map<FreehandMatchCreateResultDto>(newMatch);
 
                 return CreatedAtRoute("GetFreehandMatchById", new { matchId = newMatch.Id }, freehandMatchesReadDto);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPatch()]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> UpdateFreehandMatch(int matchId, JsonPatchDocument<FreehandMatchUpdateDto> patchDoc)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                var matchItem = await _matchService.GetFreehandMatchByIdFromDatabase(matchId);
+                if (matchItem == null)
+                    return NotFound();
+
+                bool hasPermission = await _matchService.CheckFreehandMatchPermission(matchId, int.Parse(userId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var freehandMatchToPatch = _mapper.Map<FreehandMatchUpdateDto>(matchItem);
+                patchDoc.ApplyTo(freehandMatchToPatch, ModelState);
+
+                if (!TryValidateModel(freehandMatchToPatch))
+                    return ValidationProblem(ModelState);
+
+                _mapper.Map(freehandMatchToPatch, matchItem);
+
+                _matchService.UpdateFreehandMatch(matchItem);
+
+                return NoContent();
             }
             catch (Exception e)
             {
