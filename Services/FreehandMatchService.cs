@@ -14,6 +14,7 @@ namespace FoosballApi.Services
         Task<FreehandMatchModel> CreateFreehandMatch(int userId, int organisationId, FreehandMatchCreateDto freehandMatchCreateDto);
         Task<FreehandMatchModel> GetFreehandMatchByIdFromDatabase(int matchId);
         void UpdateFreehandMatch(FreehandMatchModel freehandMatchModel);
+        void DeleteFreehandMatch(FreehandMatchModel freehandMatchModel);
     }
     public class FreehandMatchService : IFreehandMatchService
     {
@@ -312,6 +313,20 @@ namespace FoosballApi.Services
                         game_paused = freehandMatchModel.GamePaused,
                         up_to = freehandMatchModel.UpTo,
                         organisation_id = freehandMatchModel.OrganisationId
+                    });
+            }
+        }
+
+        public void DeleteFreehandMatch(FreehandMatchModel freehandMatchModel)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"DELETE FROM freehand_matches
+                    WHERE id = @id",
+                    new
+                    {
+                        id = freehandMatchModel.Id
                     });
             }
         }
