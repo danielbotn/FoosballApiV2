@@ -1,4 +1,5 @@
 using Dapper;
+using FoosballApi.Dtos.Matches;
 using FoosballApi.Models;
 using FoosballApi.Models.Matches;
 using Npgsql;
@@ -10,6 +11,7 @@ namespace FoosballApi.Services
         Task<bool> CheckFreehandMatchPermission(int matchId, int userId);
         Task<IEnumerable<FreehandMatchModelExtended>> GetAllFreehandMatches(int userId);
         Task<FreehandMatchModelExtended> GetFreehandMatchById(int matchId);
+        Task<FreehandMatchModel> CreateFreehandMatch(int userId, int organisationId, FreehandMatchCreateDto freehandMatchCreateDto);
     }
     public class FreehandMatchService : IFreehandMatchService
     {
@@ -238,6 +240,45 @@ namespace FoosballApi.Services
                 GamePaused = data.GamePaused,
             };
             return fmme;
+        }
+
+        public async Task<FreehandMatchModel> CreateFreehandMatch(int userId, int organisationId, FreehandMatchCreateDto freehandMatchCreateDto)
+        {
+            FreehandMatchModel fmm = new FreehandMatchModel();
+            DateTime now = DateTime.Now;
+            fmm.PlayerOneId = freehandMatchCreateDto.PlayerOneId;
+            fmm.PlayerTwoId = freehandMatchCreateDto.PlayerTwoId;
+            fmm.PlayerOneScore = freehandMatchCreateDto.PlayerOneScore;
+            fmm.PlayerTwoScore = freehandMatchCreateDto.PlayerTwoScore;
+            fmm.StartTime = now;
+            fmm.GameFinished = freehandMatchCreateDto.GameFinished;
+            fmm.GamePaused = freehandMatchCreateDto.GamePaused;
+            fmm.UpTo = freehandMatchCreateDto.UpTo;
+            fmm.OrganisationId = organisationId;
+           
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var data = await conn.QueryFirstOrDefaultAsync<FreehandMatchModel>(
+                    @"INSERT INTO freehand_matches (player_one_id, player_two_id, player_one_score, 
+                    player_two_score, start_time, game_finished, game_paused, up_to, organisation_id)
+                    VALUES (@playerOneId, @playerTwoId, @playerOneScore, @playerTwoScore, @startTime, @gameFinished, @gamePaused, @upTo, @organisationId)
+                    RETURNING id",
+                    new 
+                    { 
+                        playerOneId = fmm.PlayerOneId, 
+                        playerTwoId = fmm.PlayerTwoId, 
+                        playerOneScore = fmm.PlayerOneScore, 
+                        playerTwoScore = fmm.PlayerTwoScore, 
+                        startTime = fmm.StartTime,
+                        gameFinished = fmm.GameFinished, 
+                        gamePaused = fmm.GamePaused, 
+                        upTo = fmm.UpTo, 
+                        organisationId = fmm.OrganisationId 
+                    });
+                fmm.Id = data.Id;
+            }
+
+            return fmm;
         }
     }
 }

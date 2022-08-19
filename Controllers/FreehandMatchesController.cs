@@ -1,5 +1,6 @@
 using AutoMapper;
 using FoosballApi.Dtos.Matches;
+using FoosballApi.Models.Matches;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +62,32 @@ namespace FoosballApi.Controllers
                     return NotFound();
 
                 return Ok(_mapper.Map<FreehandMatchesReadDto>(allMatches));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost()]
+        [ProducesResponseType(typeof(FreehandMatchCreateResultDto), StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateFreehandMatch([FromBody] FreehandMatchCreateDto freehandMatchCreateDto)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+                
+                if (freehandMatchCreateDto.PlayerOneId != int.Parse(userId) && freehandMatchCreateDto.PlayerTwoId != int.Parse(userId))
+                {
+                    return Forbid();
+                }
+
+                FreehandMatchModel newMatch = await _matchService.CreateFreehandMatch(int.Parse(userId), int.Parse(currentOrganisationId), freehandMatchCreateDto);
+
+                var freehandMatchesReadDto = _mapper.Map<FreehandMatchCreateResultDto>(newMatch);
+
+                return CreatedAtRoute("GetFreehandMatchById", new { matchId = newMatch.Id }, freehandMatchesReadDto);
             }
             catch (Exception e)
             {
