@@ -119,7 +119,6 @@ namespace FoosballApi.Services
             }
         }
 
-
         public async Task<IEnumerable<FreehandGoalModelExtended>> GetFreehandGoalsByMatchId(int matchId, int userId)
         {
             List<FreehandGoalModelExtended> result = new List<FreehandGoalModelExtended>();
