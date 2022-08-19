@@ -11,7 +11,9 @@ namespace FoosballApi.Services
         Task<IEnumerable<FreehandGoalModelExtended>> GetFreehandGoalsByMatchId(int matchId, int userId);
         Task<bool> CheckGoalPermission(int userId, int matchId, int goalId);
         Task<FreehandGoalModelExtended> GetFreehandGoalById(int goalId);
+        Task<FreehandGoalModel> GetFreehandGoalByIdFromDatabase(int goalId);
         Task<FreehandGoalModel> CreateFreehandGoal(int userId, FreehandGoalCreateDto freehandGoalCreateDto);
+        void DeleteFreehandGoal(FreehandGoalModel freehandGoalModel);
     }
     public class FreehandGoalService : IFreehandGoalService
     {
@@ -275,6 +277,58 @@ namespace FoosballApi.Services
                     UpdateFreehandMatchScore(userId, freehandGoalCreateDto);
                     return fhg;
             }
+        }
+
+        private async void SubtractFreehandMatchScore(FreehandGoalModel freehandGoalModel)
+        {
+            var match = await GetFreehandMatchById(freehandGoalModel.MatchId);
+            if (freehandGoalModel.ScoredByUserId == match.PlayerOneId)
+            {
+                if (match.PlayerOneScore > 0)
+                    match.PlayerOneScore -= 1;
+            }
+            else
+            {
+                if (match.PlayerTwoScore > 0)
+                    match.PlayerTwoScore -= 1;
+            }
+            
+            // update match score
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"UPDATE freehand_matches
+                    SET player_one_score = @player_one_score, player_two_score = @player_two_score
+                    WHERE id = @match_id",
+                    new { player_one_score = match.PlayerOneScore, player_two_score = match.PlayerTwoScore, match_id = match.Id });
+            }
+        }
+
+        private void DeleteGoal(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.ExecuteAsync(
+                    @"DELETE FROM freehand_goals
+                    WHERE id = @id",
+                    new { id = id });
+            }
+        }
+
+        public void DeleteFreehandGoal(FreehandGoalModel freehandGoalModel)
+        {
+            if (freehandGoalModel == null)
+            {
+                throw new ArgumentNullException(nameof(freehandGoalModel));
+            }
+            SubtractFreehandMatchScore(freehandGoalModel);
+            DeleteGoal(freehandGoalModel.Id);
+        }
+
+        public async Task<FreehandGoalModel> GetFreehandGoalByIdFromDatabase(int goalId)
+        {
+           var data = await GetFreehandGoalByIdDapper(goalId);
+           return data;
         }
     }
 }
