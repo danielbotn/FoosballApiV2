@@ -40,5 +40,32 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("{matchId}", Name = "GetFreehandMatchById")]
+        [ProducesResponseType(typeof(FreehandMatchesReadDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<FreehandMatchesReadDto>> GetFreehandMatchById()
+        {
+            try
+            {
+                string matchId = RouteData.Values["matchId"].ToString();
+                string userId = User.Identity.Name;
+
+                bool hasPermission = await _matchService.CheckFreehandMatchPermission(int.Parse(matchId), int.Parse(userId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var allMatches = await _matchService.GetFreehandMatchById(int.Parse(matchId));
+
+                if (allMatches == null)
+                    return NotFound();
+
+                return Ok(_mapper.Map<FreehandMatchesReadDto>(allMatches));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

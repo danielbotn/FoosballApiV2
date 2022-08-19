@@ -9,6 +9,7 @@ namespace FoosballApi.Services
     {
         Task<bool> CheckFreehandMatchPermission(int matchId, int userId);
         Task<IEnumerable<FreehandMatchModelExtended>> GetAllFreehandMatches(int userId);
+        Task<FreehandMatchModelExtended> GetFreehandMatchById(int matchId);
     }
     public class FreehandMatchService : IFreehandMatchService
     {
@@ -22,7 +23,7 @@ namespace FoosballApi.Services
             #endif
         }
 
-        private async Task<FreehandPermissionModel> GetFreehandMatchById(int matchId)
+        private async Task<FreehandPermissionModel> GetFreehandMatchByIdPermission(int matchId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
@@ -50,7 +51,7 @@ namespace FoosballApi.Services
 
         public async Task<bool> CheckFreehandMatchPermission(int matchId, int userId)
         {
-           var query = await GetFreehandMatchById(matchId);
+           var query = await GetFreehandMatchByIdPermission(matchId);
 
             var queryData = query;
 
@@ -191,6 +192,52 @@ namespace FoosballApi.Services
             }
 
             return freehandMatchModelExtendedList;
+        }
+
+        private async Task<FreehandMatchModel> GetMatchById(int matchId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var match = await conn.QueryFirstOrDefaultAsync<FreehandMatchModel>(
+                    @"SELECT id as Id, player_one_id as PlayerOneId, player_two_id as PlayerTwoId, 
+                    start_time as StartTime, end_time as EndTime, player_one_score as PlayerOneScore,
+                    player_two_score as PlayerTwoScore, up_to as UpTo, game_finished as GameFinished,
+                    game_paused as GamePaused, organisation_id as OrganisationId
+                    FROM freehand_matches
+                    WHERE id = @id",
+                    new { id = matchId });
+                return match;
+            }
+        }
+
+        public async Task<FreehandMatchModelExtended> GetFreehandMatchById(int matchId)
+        {
+            var data = await GetMatchById(matchId);
+            TimeSpan? playingTime = null;
+            if (data.EndTime != null) {
+                playingTime = data.EndTime - data.StartTime;
+            }
+            FreehandMatchModelExtended fmme = new FreehandMatchModelExtended
+            {
+                Id = data.Id,
+                PlayerOneId = data.PlayerOneId,
+                PlayerOneFirstName = await GetFirstNameOfUser(data.PlayerOneId),
+                PlayerOneLastName = await GetLastNameOfUser(data.PlayerOneId),
+                PlayerOnePhotoUrl = await GetPhotoUrlOfUser(data.PlayerOneId),
+                PlayerTwoId = data.PlayerTwoId,
+                PlayerTwoFirstName = await GetFirstNameOfUser(data.PlayerTwoId),
+                PlayerTwoLastName = await GetLastNameOfUser(data.PlayerTwoId),
+                PlayerTwoPhotoUrl = await GetPhotoUrlOfUser(data.PlayerTwoId),
+                StartTime = data.StartTime,
+                EndTime = data.EndTime,
+                TotalPlayingTime = playingTime != null ? ToReadableAgeString(playingTime.Value) : null,
+                PlayerOneScore = data.PlayerOneScore,
+                PlayerTwoScore = data.PlayerTwoScore,
+                UpTo = data.UpTo,
+                GameFinished = data.GameFinished,
+                GamePaused = data.GamePaused,
+            };
+            return fmme;
         }
     }
 }
