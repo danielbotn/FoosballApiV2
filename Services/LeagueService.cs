@@ -17,6 +17,7 @@ namespace FoosballApi.Services
         void UpdateLeague(LeagueModel leagueModel);
         Task<IEnumerable<LeaguePlayersJoinModel>> GetLeaguesPlayers(int leagueId);
         Task<LeagueModel> CreateLeague(LeagueModelCreate leagueModelCreate);
+        void DeleteLeague(LeagueModel leagueModel);
     }
 
     public class LeagueService : ILeagueService
@@ -201,6 +202,21 @@ namespace FoosballApi.Services
             }
 
             return result;
+        }
+
+        public void DeleteLeague(LeagueModel leagueModel)
+        {
+            if (leagueModel == null)
+            {
+                throw new ArgumentNullException(nameof(leagueModel));
+            }
+            
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    "DELETE FROM leagues WHERE id = @id",
+                    new { id = leagueModel.Id });
+            }
         }
     }
 }

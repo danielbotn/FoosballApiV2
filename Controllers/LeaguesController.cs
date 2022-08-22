@@ -149,7 +149,7 @@ namespace FoosballApi.Controllers
         }
 
         [HttpPost()]
-        [ProducesResponseType(typeof(LeagueModel), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(LeagueModel), StatusCodes.Status201Created)]
         public async Task<IActionResult> CreateLeague([FromBody] LeagueModelCreate leagueModelCreate)
         {
             try
@@ -162,8 +162,33 @@ namespace FoosballApi.Controllers
 
                 LeagueModel newLeague = await _leagueService.CreateLeague(leagueModelCreate);
                 
-                return Ok(newLeague);
-                // return CreatedAtRoute("GetLeagueById", new { id = newLeague.Id }, newLeague);
+                return CreatedAtRoute("GetLeagueById", new { id = newLeague.Id }, newLeague);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpDelete("{leagueId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> DeleteLeagueById(int leagueId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                LeagueModel league = await _leagueService.GetLeagueById(leagueId);
+                if (league == null)
+                    return NotFound();
+
+                bool hasAccess = await _leagueService.CheckLeagueAccess(int.Parse(userId), league.OrganisationId);
+
+                if (!hasAccess)
+                    return Forbid();
+
+                _leagueService.DeleteLeague(league);
+
+                return NoContent();
             }
             catch (Exception e)
             {
