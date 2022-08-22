@@ -120,5 +120,32 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("league-players")]
+        [ProducesResponseType(typeof(List<LeaguePlayersReadDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<LeaguePlayersReadDto>>> GetLeaguePlayers(int leagueId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                int organisationId = await _leagueService.GetOrganisationId(leagueId);
+
+                bool hasAccess = await _leagueService.CheckLeagueAccess(int.Parse(userId), organisationId);
+
+                if (!hasAccess)
+                    return Forbid();
+
+                var leaguePlayers = await _leagueService.GetLeaguesPlayers(leagueId);
+
+                if (leaguePlayers == null)
+                    return NotFound();
+
+                return Ok(_mapper.Map<IEnumerable<LeaguePlayersReadDto>>(leaguePlayers));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

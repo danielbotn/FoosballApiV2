@@ -15,6 +15,7 @@ namespace FoosballApi.Services
         Task<int> GetOrganisationId(int leagueId);
         Task<LeagueModel> GetLeagueById(int id);
         void UpdateLeague(LeagueModel leagueModel);
+        Task<IEnumerable<LeaguePlayersJoinModel>> GetLeaguesPlayers(int leagueId);
     }
 
     public class LeagueService : ILeagueService
@@ -116,6 +117,21 @@ namespace FoosballApi.Services
                     how_many_rounds = leagueModel.HowManyRounds, 
                     id = leagueModel.Id 
                 });
+            }
+        }
+
+        public async Task<IEnumerable<LeaguePlayersJoinModel>> GetLeaguesPlayers(int leagueId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<LeaguePlayersJoinModel>(
+                    @"SELECT lp.id as Id, lp.user_id as UserId, lp.league_id as LeagueId,
+                    u.email as Email, u.first_name as FirstName, u.last_name as LastName
+                    FROM league_players lp
+                    JOIN users u ON lp.user_id = u.id
+                    WHERE league_id = @league_id",
+                new { league_id = leagueId });
+                return query;
             }
         }
     }
