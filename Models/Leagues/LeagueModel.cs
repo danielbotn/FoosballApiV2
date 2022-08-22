@@ -6,7 +6,7 @@ namespace FoosballApi.Models.Leagues
         public string Name { get; set; }
 
         public LeagueType TypeOfLeague { get; set; }
-        public DateTime Created_at { get; set; }
+        public DateTime CreatedAt { get; set; }
         public int UpTo { get; set; }
         public int OrganisationId { get; set; }
         public bool HasLeagueStarted { get; set; }

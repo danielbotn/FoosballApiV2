@@ -16,7 +16,7 @@ namespace FoosballApi.Dtos.Leagues
         public LeagueType TypeOfLeague { get; set; }
 
         [Required]
-        public DateTime Created_at { get; set; }
+        public DateTime CreatedAt { get; set; }
 
         [Required]
         public int UpTo { get; set; }
