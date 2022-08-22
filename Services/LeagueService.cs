@@ -16,6 +16,7 @@ namespace FoosballApi.Services
         Task<LeagueModel> GetLeagueById(int id);
         void UpdateLeague(LeagueModel leagueModel);
         Task<IEnumerable<LeaguePlayersJoinModel>> GetLeaguesPlayers(int leagueId);
+        Task<LeagueModel> CreateLeague(LeagueModelCreate leagueModelCreate);
     }
 
     public class LeagueService : ILeagueService
@@ -133,6 +134,73 @@ namespace FoosballApi.Services
                 new { league_id = leagueId });
                 return query;
             }
+        }
+
+        public async Task<LeagueModel> CreateLeague(LeagueModelCreate leagueModelCreate)
+        {
+            DateTime now = DateTime.Now;
+            LeagueModel result = new LeagueModel();
+            result.Name = leagueModelCreate.Name;
+            result.TypeOfLeague = leagueModelCreate.TypeOfLeague;
+            result.CreatedAt = now;
+            result.UpTo = leagueModelCreate.UpTo;
+            result.OrganisationId = leagueModelCreate.OrganisationId;
+            result.HasLeagueStarted = false;
+            result.HowManyRounds = leagueModelCreate.HowManyRounds;
+
+            var conn = new NpgsqlConnection(_connectionString);
+
+            if (conn.State != System.Data.ConnectionState.Open)
+            {
+                conn.Open();
+            }
+
+            conn.TypeMapper.MapEnum<LeagueType>("league_type");
+
+            using (var cmd = new NpgsqlCommand(@"
+                INSERT INTO leagues (name, type_of_league, created_at, up_to, organisation_id, has_league_started, how_many_rounds) 
+                VALUES (@name, @type_of_league, @created_at, @up_to, @organisation_id, @has_league_started, @how_many_rounds) RETURNING id", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "name",
+                    Value = result.Name
+                });
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "type_of_league",
+                    Value = result.TypeOfLeague
+                });
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "created_at",
+                    Value = now
+                });
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "up_to",
+                    Value = result.UpTo
+                });
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "organisation_id",
+                    Value = result.OrganisationId
+                });
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "has_league_started",
+                    Value = result.HasLeagueStarted
+                });
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "how_many_rounds",
+                    Value = result.HowManyRounds
+                });
+                var index = await cmd.ExecuteScalarAsync();
+                result.Id = (int)index;
+            }
+
+            return result;
         }
     }
 }

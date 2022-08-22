@@ -54,7 +54,7 @@ namespace FoosballApi.Controllers
             }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetLeagueById")]
         [ProducesResponseType(typeof(LeagueReadDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<LeagueReadDto>> GetLeagueById()
         {
@@ -141,6 +141,29 @@ namespace FoosballApi.Controllers
                     return NotFound();
 
                 return Ok(_mapper.Map<IEnumerable<LeaguePlayersReadDto>>(leaguePlayers));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost()]
+        [ProducesResponseType(typeof(LeagueModel), StatusCodes.Status200OK)]
+        public async Task<IActionResult> CreateLeague([FromBody] LeagueModelCreate leagueModelCreate)
+        {
+            try
+            {
+                int userId = int.Parse(User.Identity.Name);
+                bool hasAccess = await _leagueService.CheckLeagueAccess(userId, leagueModelCreate.OrganisationId);
+
+                if (!hasAccess)
+                    return Forbid();
+
+                LeagueModel newLeague = await _leagueService.CreateLeague(leagueModelCreate);
+                
+                return Ok(newLeague);
+                // return CreatedAtRoute("GetLeagueById", new { id = newLeague.Id }, newLeague);
             }
             catch (Exception e)
             {

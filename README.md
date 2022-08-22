@@ -489,7 +489,7 @@ These endpoints should be implemented
 | Leagues               | GET    | Get leagus by org.  | Leagues/organisation                   | x      |
 | Leagues               | GET    | Get league by id    | Leagues/{id}                           | x      |
 | Leagues               | PATCH  | UPDATE league by id | Leagues/{id}                           | x      |
-| Leagues               | GET    | Get league players  | Leagues/league-players                 |        |
+| Leagues               | GET    | Get league players  | Leagues/league-players                 | x      |
 | Leagues               | POST   | Create new league   | Leagues                                |        |
 | Leagues               | DELETE | Delete league by id | Leagues/{leagueId}                     |        |
 | Leagues               | GET    | Get leag. standings | Leagues/single-league/standings        |        |
