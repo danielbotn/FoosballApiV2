@@ -3,6 +3,7 @@ using FoosballApi.Dtos.Leagues;
 using FoosballApi.Models.Leagues;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoosballApi.Controllers
@@ -75,6 +76,44 @@ namespace FoosballApi.Controllers
                     return NotFound();
 
                 return Ok(_mapper.Map<LeagueReadDto>(leagueModel));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPatch("{leagueId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> PartialLeagueUpdate(int leagueId, JsonPatchDocument<LeagueUpdateDto> patchDoc)
+        {
+            try
+            {
+                var leagueItem = await _leagueService.GetLeagueById(leagueId);
+
+                if (leagueItem == null)
+                    return NotFound();
+
+                string userId = User.Identity.Name;
+
+                int organisationId = await _leagueService.GetOrganisationId(leagueId);
+
+                bool hasAccess = await _leagueService.CheckLeagueAccess(int.Parse(userId), organisationId);
+
+                if (!hasAccess)
+                    return Forbid();
+
+                var leagueToPatch = _mapper.Map<LeagueUpdateDto>(leagueItem);
+                patchDoc.ApplyTo(leagueToPatch, ModelState);
+
+                if (!TryValidateModel(leagueToPatch))
+                    return ValidationProblem(ModelState);
+
+                _mapper.Map(leagueToPatch, leagueItem);
+
+                _leagueService.UpdateLeague(leagueItem);
+
+                return NoContent();
             }
             catch (Exception e)
             {

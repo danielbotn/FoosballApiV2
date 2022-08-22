@@ -14,7 +14,7 @@ namespace FoosballApi.Services
         Task<bool> CheckLeagueAccess(int userId, int organisationId);
         Task<int> GetOrganisationId(int leagueId);
         Task<LeagueModel> GetLeagueById(int id);
-
+        void UpdateLeague(LeagueModel leagueModel);
     }
 
     public class LeagueService : ILeagueService
@@ -93,6 +93,29 @@ namespace FoosballApi.Services
                     WHERE id = @id",
                 new { id = id });
                 return query.FirstOrDefault();
+            }
+        }
+
+        // type_of_league = leagueModel.TypeOfLeague, 
+        // Dapper does not seem to have a way to update an enum value
+        public void UpdateLeague(LeagueModel leagueModel)
+        {
+            int type_of_league = (int)leagueModel.TypeOfLeague;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE leagues
+                    SET name = @name, up_to = @up_to,
+                    has_league_started = @has_league_started, how_many_rounds = @how_many_rounds
+                    WHERE id = @id",
+                new 
+                { 
+                    name = leagueModel.Name, 
+                    up_to = leagueModel.UpTo,
+                    has_league_started = leagueModel.HasLeagueStarted, 
+                    how_many_rounds = leagueModel.HowManyRounds, 
+                    id = leagueModel.Id 
+                });
             }
         }
     }

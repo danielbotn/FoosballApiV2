@@ -487,8 +487,8 @@ These endpoints should be implemented
 | FreehandMatches       | GET    | Get f match by mID  | FreehandMatches/{matchId}              | x      |
 | FreehandMatches       | DELETE | Delete f match      | FreehandMatches/{matchId}              | x      |
 | Leagues               | GET    | Get leagus by org.  | Leagues/organisation                   | x      |
-| Leagues               | GET    | Get league by id    | Leagues/{id}                           |        |
-| Leagues               | PATCH  | UPDATE league by id | Leagues/{id}                           |        |
+| Leagues               | GET    | Get league by id    | Leagues/{id}                           | x      |
+| Leagues               | PATCH  | UPDATE league by id | Leagues/{id}                           | x      |
 | Leagues               | GET    | Get league players  | Leagues/league-players                 |        |
 | Leagues               | POST   | Create new league   | Leagues                                |        |
 | Leagues               | DELETE | Delete league by id | Leagues/{leagueId}                     |        |
