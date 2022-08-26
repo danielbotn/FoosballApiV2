@@ -34,7 +34,7 @@ namespace FoosballApi.Services
 
         private async Task<List<OrganisationListModel>> GetOrganisationList(int userId, int organisationId)
         {
-             using (var conn = new NpgsqlConnection(_connectionString))
+            using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var goals = await conn.QueryAsync<OrganisationListModel>(
                     @"SELECT id as Id, organisation_id as OrganisationId, user_id as UserId
@@ -210,7 +210,7 @@ namespace FoosballApi.Services
             {
                 throw new ArgumentNullException(nameof(leagueModel));
             }
-            
+
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Execute(

@@ -5,6 +5,7 @@ using Dapper;
 using FoosballApi.Models;
 using FoosballApi.Models.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueMatches;
+using FoosballApi.Models.DoubleLeaguePlayers;
 using FoosballApi.Models.DoubleLeagueTeams;
 using FoosballApi.Models.Other;
 using Npgsql;
@@ -19,6 +20,7 @@ namespace FoosballApi.Services
         Task<DoubleLeagueMatchModel> GetMatchById(int matchId);
         void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match);
         Task<DoubleLeagueMatchModel> ResetMatch(DoubleLeagueMatchModel doubleLeagueMatchModel, int matchId);
+        Task<IEnumerable<DoubleLeagueStandingsQuery>> GetDoubleLeagueStandings(int leagueId);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -297,6 +299,239 @@ namespace FoosballApi.Services
             DeleteAllGoals(matchId);
 
             return await ResetDoubleLeagueMatch(doubleLeagueMatchModel);
+        }
+
+        private async Task<List<int>> GetAllTeamIds(int leagueId)
+        {
+            List<int> result = new();
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<DoubleLeagueMatchesSelect>(
+                    @"SELECT DISTINCT team_one_id as TeamOneId, team_two_id as TeamTwoId
+                    FROM double_league_matches
+                    WHERE league_id = @league_id",
+                new { league_id = leagueId });
+                query = query.ToList();
+
+                foreach (var item in query)
+                {
+                    result.Add(item.TeamOneId);
+                    result.Add(item.TeamTwoId);
+                }
+            }
+    
+            return result;
+        }
+
+        private async Task<List<DoubleLeagueMatchModel>> GetMatchesWonATeamOne(int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id
+                    FROM double_league_matches
+                    WHERE team_one_id = @team_one_id AND match_ended = true AND team_one_score > team_two_score",
+                new { team_one_id = teamId });
+                
+                return matches.ToList();
+            }
+        }
+
+        private async Task<List<DoubleLeagueMatchModel>> GetMatchesWonATeamTwo(int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id
+                    FROM double_league_matches
+                    WHERE team_two_id = @team_two_id AND match_ended = true AND team_two_score > team_one_score",
+                new { team_two_id = teamId });
+                
+                return matches.ToList();
+            }
+        }
+
+        private async Task<List<DoubleLeagueMatchModel>> GetMatchesLostATeamOne(int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id
+                    FROM double_league_matches
+                    WHERE team_one_id = @team_one_id AND match_ended = true AND team_one_score < team_two_score",
+                new { team_one_id = teamId });
+                
+                return matches.ToList();
+            }
+        }
+
+        private async Task<List<DoubleLeagueMatchModel>> GetMatchesLostATeamTwo(int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id
+                    FROM double_league_matches
+                    WHERE team_two_id = @team_two_id AND match_ended = true AND team_two_score < team_one_score",
+                new { team_two_id = teamId });
+                
+                return matches.ToList();
+            }
+        }
+
+        private async Task<int> GetTotalGoalsScored(int teamId)
+        {
+            int result = 0;
+            
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id
+                    FROM double_league_goals
+                    WHERE scored_by_team_id = @scored_by_team_id",
+                new { scored_by_team_id = teamId });
+                
+                query = query.ToList();
+                
+                result = query.Count();
+            }
+
+            return result;
+        }
+
+        private async Task<int> GetTolalGoalsRecieved(int teamId)
+        {
+            int result = 0;
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<DoubleLeagueMatchModel>(
+                    @"SELECT id as Id
+                    FROM double_league_goals
+                    WHERE opponent_team_id = @scored_by_team_id",
+                new { opponent_team_id = teamId });
+                
+                query = query.ToList();
+                
+                result = query.Count();
+            }
+            return result;
+        }
+
+        private async Task<List<DoubleLeaguePlayerModel>> GetDoubleLeaguePlayers(int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<DoubleLeaguePlayerModel>(
+                    @"SELECT DISTINCT id as Id, user_id as UserId, 
+                    double_league_team_id as DoubleLeagueTeamId
+                    FROM double_league_players
+                    WHERE double_league_team_id = @double_league_team_id",
+                new { double_league_team_id = teamId });
+                
+                query = query.ToList();
+
+                var data = query.ToList();
+                
+                return data;
+            }
+        }
+
+        private async Task<User> GetUser(int userId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstAsync<User>(
+                    @"SELECT id as Id, first_name as FirstName,
+                    last_name as LastName, email as Email
+                    FROM users
+                    WHERE id = @id",
+                new { id = userId });
+                
+                return query;
+            }
+        }
+
+        private async Task<TeamMember[]> GetTeamMembers(int teamId)
+        {
+            List<TeamMember> teamMembers = new();
+
+            var players = await GetDoubleLeaguePlayers(teamId);
+
+            foreach (var player in players)
+            {
+                var user = await GetUser(player.UserId);
+
+                TeamMember teamMember = new TeamMember
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Email = user.Email
+                };
+
+                teamMembers.Add(teamMember);
+            }
+
+            var teamMembersAsArray = teamMembers.ToArray();
+
+            return teamMembersAsArray;
+        }
+
+         private List<DoubleLeagueStandingsQuery> ReturnSortedLeague(List<DoubleLeagueStandingsQuery> singleLeagueStandings)
+        {
+            return singleLeagueStandings.OrderByDescending(x => x.Points).ToList();
+        }
+
+        private List<DoubleLeagueStandingsQuery> AddPositionInLeagueToList(List<DoubleLeagueStandingsQuery> standings)
+        {
+            List<DoubleLeagueStandingsQuery> result = standings;
+            foreach (var item in result.Select((value, i) => new { i, value }))
+            {
+                item.value.PositionInLeague = item.i + 1;
+            }
+            return result;
+        }
+
+        public async Task<IEnumerable<DoubleLeagueStandingsQuery>> GetDoubleLeagueStandings(int leagueId)
+        {
+            List<DoubleLeagueStandingsQuery> standings = new();
+            const int Points = 3;
+            const int Zero = 0;
+            List<int> teamIds = await GetAllTeamIds(leagueId);
+
+            foreach (var teamId in teamIds)
+            {
+                var matchesWonAsTeamOne = await GetMatchesWonATeamOne(teamId);
+                var matchesWonAsTeamTwo = await GetMatchesWonATeamTwo(teamId);
+
+                var matchesLostAsTeamOne = await GetMatchesLostATeamOne(teamId);
+                var matchesLostAsTeamTwo = await GetMatchesLostATeamTwo(teamId);
+
+                int totalMatchesWon = matchesWonAsTeamOne.Count() + matchesWonAsTeamTwo.Count();
+                int totalMatchesLost = matchesLostAsTeamOne.Count() + matchesLostAsTeamTwo.Count();
+                
+                DoubleLeagueStandingsQuery dls = new DoubleLeagueStandingsQuery
+                {
+                    TeamID = teamId,
+                    LeagueId = leagueId,
+                    TotalMatchesWon = totalMatchesWon,
+                    TotalMatchesLost = totalMatchesLost,
+                    TotalGoalsScored = await GetTotalGoalsScored(teamId),
+                    TotalGoalsRecieved = await GetTolalGoalsRecieved(teamId),
+                    PositionInLeague = Zero,
+                    MatchesPlayed = Zero,
+                    Points = Points * totalMatchesWon,
+                    TeamMembers = await GetTeamMembers(teamId)
+                };
+                standings.Add(dls);
+            }
+
+            var sortedLeague = ReturnSortedLeague(standings);
+            var sortedLeagueWithPositions = AddPositionInLeagueToList(sortedLeague);
+
+            return sortedLeagueWithPositions;
         }
     }
 }

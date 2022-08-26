@@ -1,5 +1,7 @@
 using AutoMapper;
+using FoosballApi.Dtos.DoubleLeagueMatches;
 using FoosballApi.Dtos.Leagues;
+using FoosballApi.Dtos.SingleLeagueMatches;
 using FoosballApi.Models.Leagues;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,18 +16,18 @@ namespace FoosballApi.Controllers
     public class LeaguesController : ControllerBase
     {
         private readonly ILeagueService _leagueService;
-        // private readonly ISingleLeagueMatchService _singleLeagueMatchService;
+        private readonly ISingleLeagueMatchService _singleLeagueMatchService;
         private readonly IDoubleLeaugeMatchService _doubleLeagueMatchService;
         private readonly IMapper _mapper;
 
         public LeaguesController(
             ILeagueService leagueService,
-            //ISingleLeagueMatchService singleLeagueMatchService,
+            ISingleLeagueMatchService singleLeagueMatchService,
             IMapper mapper,
             IDoubleLeaugeMatchService doubleLeagueMatchService)
         {
             _leagueService = leagueService;
-           // _singleLeagueMatchService = singleLeagueMatchService;
+            _singleLeagueMatchService = singleLeagueMatchService;
             _doubleLeagueMatchService = doubleLeagueMatchService;
             _mapper = mapper;
         }
@@ -189,6 +191,50 @@ namespace FoosballApi.Controllers
                 _leagueService.DeleteLeague(league);
 
                 return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpGet("single-league/standings")]
+        [ProducesResponseType(typeof(List<SingleLeagueStandingsReadDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<SingleLeagueStandingsReadDto>>> GetSingleLeagueStandings(int leagueId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                bool permission = await _singleLeagueMatchService.CheckLeaguePermission(leagueId, int.Parse(userId));
+
+                if (!permission)
+                    return Forbid();
+
+                var standings = await _singleLeagueMatchService.GetSigleLeagueStandings(leagueId);
+
+                return Ok(_mapper.Map<IEnumerable<SingleLeagueStandingsReadDto>>(standings));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpGet("double-league/standings")]
+        [ProducesResponseType(typeof(List<SingleLeagueStandingsReadDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<DoubleLeagueStandingsReadDto>>> GetDoubleLeagueStandings(int leagueId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                bool permission = await _doubleLeagueMatchService.CheckLeaguePermission(leagueId, int.Parse(userId));
+
+                if (!permission)
+                    return Forbid();
+
+                var standings = await _doubleLeagueMatchService.GetDoubleLeagueStandings(leagueId);
+
+                return Ok(_mapper.Map<IEnumerable<DoubleLeagueStandingsReadDto>>(standings));
             }
             catch (Exception e)
             {
