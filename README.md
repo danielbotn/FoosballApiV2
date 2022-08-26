@@ -492,8 +492,8 @@ These endpoints should be implemented
 | Leagues               | GET    | Get league players  | Leagues/league-players                 | x      |
 | Leagues               | POST   | Create new league   | Leagues                                | x      |
 | Leagues               | DELETE | Delete league by id | Leagues/{leagueId}                     | x      |
-| Leagues               | GET    | Get leag. standings | Leagues/single-league/standings        |        |
-| Leagues               | GET    | Get dLeague stand.  | Leagues/double-league/standings        |        |
+| Leagues               | GET    | Get leag. standings | Leagues/single-league/standings        | x      |
+| Leagues               | GET    | Get dLeague stand.  | Leagues/double-league/standings        | x      |
 | Organisations         | GET    | Get organisations   | Organisations                          |        |
 | Organisations         | POST   | Create organisation | Organisations                          |        |
 | Organisations         | GET    | Get org by id       | Organisations/{id}                     |        |
