@@ -9,6 +9,7 @@ namespace FoosballApi.Services
     {
         Task<OrganisationModel> GetOrganisationById(int id);
         Task<OrganisationModel> CreateOrganisation(OrganisationModelCreate organisation, int userId);
+        void UpdateOrganisation(OrganisationModel organisation);
     }
 
     public class OrganisationService : IOrganisationService
@@ -44,7 +45,6 @@ namespace FoosballApi.Services
             result.CreatedAt = now;
             result.Name = organisation.Name;
             
-            
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var newOrganistionId = await conn.ExecuteScalarAsync<int>(
@@ -60,6 +60,25 @@ namespace FoosballApi.Services
             }
             
             return result;
+        }
+
+        public void UpdateOrganisation(OrganisationModel organisation)
+        {
+            int organisation_type = (int)organisation.OrganisationType;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE organisations
+                    SET name = @name, created_at = @created_at, organisation_type = @organisation_type
+                    WHERE id = @id",
+                new 
+                { 
+                    name = organisation.Name, 
+                    created_at = organisation.CreatedAt,
+                    organisation_type = organisation_type,
+                    id = organisation.Id
+                });
+            }
         }
     }
 }

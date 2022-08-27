@@ -496,7 +496,7 @@ These endpoints should be implemented
 | Leagues               | GET    | Get dLeague stand.  | Leagues/double-league/standings        | x      |
 | Organisations         | POST   | Create organisation | Organisations                          | x      |
 | Organisations         | GET    | Get org by id       | Organisations/{id}                     | x      |
-| Organisations         | PATCH  | Update org by id    | Organisations/{id}                     |        |
+| Organisations         | PATCH  | Update org by id    | Organisations/{id}                     | x      |
 | Organisations         | DELETE | Delete org by id    | Organisations/{id}                     |        |
 | Organisations         | GET    | Get orgs by user    | Organisations/user                     |        |
 | SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                      |        |

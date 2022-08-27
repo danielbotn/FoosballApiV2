@@ -3,6 +3,7 @@ using FoosballApi.Dtos.Organisations;
 using FoosballApi.Models.Organisations;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoosballApi.Controllers
@@ -51,6 +52,37 @@ namespace FoosballApi.Controllers
                 OrganisationModel newOrganisation = await _organisationService.CreateOrganisation(organisationModelCreate, int.Parse(userId));
 
                 return CreatedAtRoute("getOrganisationById", new { Id = newOrganisation.Id }, newOrganisation);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPatch("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> PartialOrganisationUpdate(int id, JsonPatchDocument<OrganisationUpdateDto> patchDoc)
+        {
+            try
+            {
+                var orgItem = await _organisationService.GetOrganisationById(id);
+
+                if (orgItem == null)
+                    return NotFound();
+
+                // need to check permissions
+
+                var organisationToPatch = _mapper.Map<OrganisationUpdateDto>(orgItem);
+                patchDoc.ApplyTo(organisationToPatch, ModelState);
+
+                if (!TryValidateModel(organisationToPatch))
+                    return ValidationProblem(ModelState);
+
+                _mapper.Map(organisationToPatch, orgItem);
+
+                _organisationService.UpdateOrganisation(orgItem);
+
+                return NoContent();
             }
             catch (Exception e)
             {
