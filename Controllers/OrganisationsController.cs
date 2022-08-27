@@ -89,5 +89,26 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> DeleteOrganisation(int id)
+        {
+            try
+            {
+                var organisation = await _organisationService.GetOrganisationById(id);
+
+                if (organisation == null)
+                    return NotFound();
+
+                _organisationService.DeleteOrganisation(organisation);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

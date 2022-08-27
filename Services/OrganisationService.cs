@@ -10,6 +10,7 @@ namespace FoosballApi.Services
         Task<OrganisationModel> GetOrganisationById(int id);
         Task<OrganisationModel> CreateOrganisation(OrganisationModelCreate organisation, int userId);
         void UpdateOrganisation(OrganisationModel organisation);
+        void DeleteOrganisation(OrganisationModel organisation);
     }
 
     public class OrganisationService : IOrganisationService
@@ -78,6 +79,21 @@ namespace FoosballApi.Services
                     organisation_type = organisation_type,
                     id = organisation.Id
                 });
+            }
+        }
+
+        public void DeleteOrganisation(OrganisationModel organisation)
+        {
+            if (organisation == null)
+            {
+                throw new ArgumentNullException(nameof(organisation));
+            }
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    "DELETE FROM organisations WHERE id = @id",
+                    new { id = organisation.Id });
             }
         }
     }
