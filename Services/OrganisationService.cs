@@ -1,5 +1,6 @@
 using Dapper;
 using FoosballApi.Dtos.Organisations;
+using FoosballApi.Models;
 using FoosballApi.Models.Organisations;
 using Npgsql;
 
@@ -9,8 +10,11 @@ namespace FoosballApi.Services
     {
         Task<OrganisationModel> GetOrganisationById(int id);
         Task<OrganisationModel> CreateOrganisation(OrganisationModelCreate organisation, int userId);
+        Task<bool> HasUserOrganisationPermission(int userId, int organisationId);
         void UpdateOrganisation(OrganisationModel organisation);
         void DeleteOrganisation(OrganisationModel organisation);
+        Task<IEnumerable<OrganisationModel>> GetOrganisationsByUser(int id);
+
     }
 
     public class OrganisationService : IOrganisationService
@@ -94,6 +98,51 @@ namespace FoosballApi.Services
                 conn.Execute(
                     "DELETE FROM organisations WHERE id = @id",
                     new { id = organisation.Id });
+            }
+        }
+
+        public async Task<bool> HasUserOrganisationPermission(int userId, int organisationId)
+        {
+            bool result = false;
+
+            List<OrganisationListModel> organisationLists = new();
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<OrganisationListModel>(
+                    @"SELECT id as Id, user_id as UserId, organisation_id as Organisationid
+                    FROM organisation_list
+                    WHERE user_id = @user_id AND organisation_id = @organisation_id",
+                new { user_id= userId, organisation_id = organisationId });
+                
+                organisationLists = query.ToList();
+            }
+
+            foreach (var item in organisationLists)
+            {
+                if (item.UserId == userId && item.OrganisationId == organisationId)
+                {
+                    result = true;
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<IEnumerable<OrganisationModel>> GetOrganisationsByUser(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<OrganisationModel>(
+                    @"SELECT o.id as Id, o.name as Name, o.created_at as CreatedAt,
+                    o.organisation_type as OrganistionType
+                    FROM organisations o
+                    JOIN organisation_list ol ON ol.organisation_id = o.id
+                    WHERE ol.user_id = @user_id",
+                new { user_id= id });
+                
+                return query;
             }
         }
     }

@@ -28,6 +28,12 @@ namespace FoosballApi.Controllers
         {
             try
             {
+                string userId = User.Identity.Name;
+                bool hasPermission = await _organisationService.HasUserOrganisationPermission(int.Parse(userId), id);
+
+                if (!hasPermission)
+                    return Forbid();
+
                 var userItem = await _organisationService.GetOrganisationById(id);
 
                 if (userItem == null)
@@ -70,7 +76,11 @@ namespace FoosballApi.Controllers
                 if (orgItem == null)
                     return NotFound();
 
-                // need to check permissions
+                string userId = User.Identity.Name;
+                bool hasPermission = await _organisationService.HasUserOrganisationPermission(int.Parse(userId), id);
+
+                if (!hasPermission)
+                    return Forbid();
 
                 var organisationToPatch = _mapper.Map<OrganisationUpdateDto>(orgItem);
                 patchDoc.ApplyTo(organisationToPatch, ModelState);
@@ -96,14 +106,38 @@ namespace FoosballApi.Controllers
         {
             try
             {
+                string userId = User.Identity.Name;
+                bool hasPermission = await _organisationService.HasUserOrganisationPermission(int.Parse(userId), id);
+
+                if (!hasPermission)
+                    return Forbid();
+
                 var organisation = await _organisationService.GetOrganisationById(id);
 
                 if (organisation == null)
                     return NotFound();
+                
 
                 _organisationService.DeleteOrganisation(organisation);
 
                 return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpGet("user")]
+        [ProducesResponseType(typeof(OrganisationReadDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<OrganisationReadDto>> GetOrganisationsByUser()
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                var userItem = await _organisationService.GetOrganisationsByUser(int.Parse(userId));
+
+                return Ok(_mapper.Map<IEnumerable<OrganisationReadDto>>(userItem));
             }
             catch (Exception e)
             {
