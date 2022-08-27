@@ -1,14 +1,11 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using FoosballApi.Dtos.Organisations;
 
 namespace FoosballApi
 {
     public class OrganisationModel
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Required]
         public int Id { get; set; }
 
         [Required]
