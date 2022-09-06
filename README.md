@@ -499,7 +499,7 @@ These endpoints should be implemented
 | Organisations         | PATCH  | Update org by id    | Organisations/{id}                     | x      |
 | Organisations         | DELETE | Delete org by id    | Organisations/{id}                     | x      |
 | Organisations         | GET    | Get orgs by user    | Organisations/user                     | x      |
-| SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                      |        |
+| SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                      | x      |
 | SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                      |        |
 | SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             |        |
 | SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             |        |
