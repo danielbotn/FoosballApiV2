@@ -500,7 +500,7 @@ These endpoints should be implemented
 | Organisations         | DELETE | Delete org by id    | Organisations/{id}                     | x      |
 | Organisations         | GET    | Get orgs by user    | Organisations/user                     | x      |
 | SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                      | x      |
-| SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                      |        |
+| SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                      | x      |
 | SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             |        |
 | SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             |        |
 | SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    |        |
