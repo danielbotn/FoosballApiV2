@@ -501,8 +501,8 @@ These endpoints should be implemented
 | Organisations         | GET    | Get orgs by user    | Organisations/user                     | x      |
 | SingleLeagueGoals     | GET    | Get sl goals        | SingleLeagueGoals                      | x      |
 | SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                      | x      |
-| SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             |        |
-| SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             |        |
+| SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             | x      |
+| SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             | x      |
 | SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    |        |
 | SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                    |        |
 | SingleLeagueMatches   | GET    | Get sl match        | SingleLeagueMatches/{matchId}          |        |

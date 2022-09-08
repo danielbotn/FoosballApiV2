@@ -1,5 +1,6 @@
 using AutoMapper;
 using FoosballApi.Dtos.SingleLeagueGoals;
+using FoosballApi.Models.SingleLeagueGoals;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -63,6 +64,60 @@ namespace FoosballApi.Controllers
                 var goal = await _singleLeagueGoalService.GetSingleLeagueGoalById(goalId);
 
                 return Ok(_mapper.Map<SingleLeagueGoalReadDto>(goal));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost("")]
+        [ProducesResponseType(typeof(SingleLeagueGoalReadDto), StatusCodes.Status201Created)]
+        public async Task<ActionResult> CreateSingleLeagueGoal([FromBody] SingleLeagueCreateModel singleLeagueCreateModel)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                bool permission = _singleLeagueGoalService.CheckCreatePermission(int.Parse(userId), singleLeagueCreateModel);
+
+                if (!permission)
+                    return Forbid();
+
+                SingleLeagueGoalModel newGoal = await _singleLeagueGoalService.CreateSingleLeagueGoal(singleLeagueCreateModel);
+
+                SingleLeagueGoalReadDto singleLeagueGoalReadDto = _mapper.Map<SingleLeagueGoalReadDto>(singleLeagueCreateModel);
+                singleLeagueGoalReadDto.Id = newGoal.Id;
+                singleLeagueGoalReadDto.TimeOfGoal = newGoal.TimeOfGoal;
+
+                return CreatedAtRoute("getSingleLeagueById", new { goalId = newGoal.Id }, singleLeagueGoalReadDto);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpDelete("{goalId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> DeleteSingleLeagueGoalById(int goalId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+                var goalItem = await _singleLeagueGoalService.GetSingleLeagueGoalById(goalId);
+                if (goalItem == null)
+                    return NotFound();
+
+                bool hasPermission = await _singleLeagueGoalService.CheckSingleLeagueGoalPermission(int.Parse(userId), goalId, int.Parse(currentOrganisationId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                _singleLeagueGoalService.DeleteSingleLeagueGoal(goalItem);
+
+                return NoContent();
             }
             catch (Exception e)
             {

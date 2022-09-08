@@ -12,8 +12,8 @@ namespace FoosballApi.Services
         Task<bool> CheckSingleLeagueGoalPermission(int userId, int goalId, int organisationId);
         bool CheckCreatePermission(int userId, SingleLeagueCreateModel singleLeagueCreateModel);
         Task<SingleLeagueGoalModelExtended> GetSingleLeagueGoalById(int goaldId);
-        void DeleteSingleLeagueGoal(SingleLeagueGoalModel singleLeagueGoalModel);
-        SingleLeagueGoalModel CreateSingleLeagueGoal(SingleLeagueCreateModel singleLeagueCreateMode);
+        void DeleteSingleLeagueGoal(SingleLeagueGoalModelExtended singleLeagueGoalModel);
+        Task<SingleLeagueGoalModel> CreateSingleLeagueGoal(SingleLeagueCreateModel singleLeagueCreateMode);
     }
 
     public class SingleLeagueGoalService : ISingleLeagueGoalService
@@ -30,7 +30,12 @@ namespace FoosballApi.Services
 
         public bool CheckCreatePermission(int userId, SingleLeagueCreateModel singleLeagueCreateModel)
         {
-            throw new NotImplementedException();
+            bool result = false;
+
+            if (userId == singleLeagueCreateModel.ScoredByUserId || userId == singleLeagueCreateModel.OpponentId)
+                result = true;
+
+            return result;
         }
 
         private async Task<SingleLeagueGoalModel> GetGoalQuery(int goalId)
@@ -108,14 +113,59 @@ namespace FoosballApi.Services
             return result;
         }
 
-        public SingleLeagueGoalModel CreateSingleLeagueGoal(SingleLeagueCreateModel singleLeagueCreateMode)
+        public async Task<SingleLeagueGoalModel> CreateSingleLeagueGoal(SingleLeagueCreateModel singleLeagueCreateMode)
         {
-            throw new NotImplementedException();
+            DateTime now = DateTime.Now;
+            if (singleLeagueCreateMode == null)
+            {
+                throw new ArgumentNullException(nameof(singleLeagueCreateMode));
+            }
+
+            SingleLeagueGoalModel newGoal = new();
+            newGoal.TimeOfGoal = now;
+            newGoal.MatchId = singleLeagueCreateMode.MatchId;
+            newGoal.ScoredByUserId = singleLeagueCreateMode.ScoredByUserId;
+            newGoal.OpponentId = singleLeagueCreateMode.OpponentId;
+            newGoal.ScorerScore = singleLeagueCreateMode.ScorerScore;
+            newGoal.OpponentScore = singleLeagueCreateMode.OpponentScore;
+            newGoal.WinnerGoal = singleLeagueCreateMode.WinnerGoal;
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var data = await conn.QueryFirstOrDefaultAsync<FreehandMatchModel>(
+                    @"INSERT INTO single_league_goals (time_of_goal, match_id, scored_by_user_id, 
+                    opponent_id, scorer_score, opponent_score, winner_goal)
+                    VALUES (@time_of_goal, @match_id, @scored_by_user_id, @opponent_id, @scorer_score, @opponent_score, @winner_goal)
+                    RETURNING id",
+                    new 
+                    { 
+                        time_of_goal = now, 
+                        match_id = singleLeagueCreateMode.MatchId, 
+                        scored_by_user_id = singleLeagueCreateMode.ScoredByUserId, 
+                        opponent_id = singleLeagueCreateMode.OpponentId,
+                        scorer_score = singleLeagueCreateMode.ScorerScore,
+                        opponent_score = singleLeagueCreateMode.OpponentScore, 
+                        winner_goal = singleLeagueCreateMode.WinnerGoal
+                    });
+                newGoal.Id = data.Id;
+            }
+
+            return newGoal;
         }
 
-        public void DeleteSingleLeagueGoal(SingleLeagueGoalModel singleLeagueGoalModel)
+        public void DeleteSingleLeagueGoal(SingleLeagueGoalModelExtended singleLeagueGoalModel)
         {
-            throw new NotImplementedException();
+            if (singleLeagueGoalModel == null)
+            {
+                throw new ArgumentNullException(nameof(singleLeagueGoalModel));
+            }
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    "DELETE FROM single_league_goals WHERE id = @id",
+                    new { id = singleLeagueGoalModel.Id });
+            }
         }
 
         private async Task<List<SingleLeagueGoalModel>> GetSingleLeagueGoalsByMatchIdAsList(int matchId)
