@@ -503,7 +503,7 @@ These endpoints should be implemented
 | SingleLeagueGoals     | POST   | Create sl goal      | SingleLeagueGoals                      | x      |
 | SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             | x      |
 | SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             | x      |
-| SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    |        |
+| SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    | x      |
 | SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                    |        |
 | SingleLeagueMatches   | GET    | Get sl match        | SingleLeagueMatches/{matchId}          |        |
 | SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match        |        |
