@@ -12,6 +12,8 @@ namespace FoosballApi.Services
         Task<bool> CheckLeaguePermission(int leagueId, int userId);
         Task<IEnumerable<SingleLeagueStandingsQuery>> GetSigleLeagueStandings(int leagueId);
         Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByOrganisationId(int organisationId, int leagueId);
+        Task<bool> CheckMatchPermission(int matchId, int userId);
+        Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdExtended(int matchId);
     }
 
     public class SingleLeagueMatchService : ISingleLeagueMatchService
@@ -263,6 +265,85 @@ namespace FoosballApi.Services
                 
                 return matches.ToList();
             }
+        }
+
+        public async Task<bool> CheckMatchPermission(int matchId, int userId)
+        {
+            SingleLeagueMatchModel query;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var q = await conn.QueryFirstAsync<SingleLeagueMatchModel>(
+                    @"SELECT id as Id, player_one as PlayerOne, player_two as PlayerTwo
+                    FROM single_league_matches
+                    WHERE id = @id AND player_one = @user_id OR player_one = @user_Id",
+                new { id = matchId, user_id = userId,  });
+                
+               query = q;
+            }
+
+            if (query.PlayerOne == userId || query.PlayerTwo == userId)
+                return true;
+
+            return false;
+        }
+
+        private async Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdData(int matchId)
+        {
+             using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstAsync<SingleLeagueMatchModelExtended>(
+                    @"SELECT slm.id AS Id, slm.player_one As PlayerOne, slm.player_two AS PlayerTwo, 
+                    slm.league_id AS LeagueId, slm.start_time AS StartTime, slm.end_time AS EndTime,
+                    slm.player_one_score AS PlayerOneScore, slm.player_two_score AS PlayerTwoScore, 
+                    slm.match_ended as MatchEnded, slm.match_paused AS MatchPaused, slm.match_started AS MatchStarted,
+                    (SELECT u.first_name from Users u where u.id = slm.player_one) AS PlayerOneFirstName,
+                    (SELECT u2.last_name from Users u2 where u2.id = slm.player_one) AS PlayerOneLastName,
+                    (SELECT u2.photo_url from Users u2 where u2.id = slm.player_one) AS PlayerOnePhotoUrl,
+                    (SELECT u3.first_name from Users u3 where u3.id = slm.player_two) as PlayerTwoFirstName,
+                    (SELECT u4.last_name from Users u4 where u4.id = slm.player_two) as PlayerTwoLastName,
+                    (SELECT u4.photo_url from Users u4 where u4.id = slm.player_two) as PlayerTwoPhotoUrl
+                    FROM single_league_matches slm
+                    WHERE id = @id",
+                new { id = matchId,  });
+                
+               return query;
+            }
+        }
+
+        public string ToReadableAgeString(TimeSpan span)
+        {
+            return string.Format("{0:hh\\:mm\\:ss}", span);
+        }
+
+        public async Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdExtended(int matchId)
+        {
+            var data = await GetSingleLeagueMatchByIdData(matchId);
+
+            TimeSpan? playingTime = null;
+            if (data.EndTime != null) {
+                playingTime = data.EndTime - data.StartTime;
+            }
+            SingleLeagueMatchModelExtended match = new SingleLeagueMatchModelExtended {
+                Id = data.Id,
+                PlayerOne = data.PlayerOne,
+                PlayerOneFirstName = data.PlayerOneFirstName,
+                PlayerOneLastName = data.PlayerOneLastName,
+                PlayerOnePhotoUrl = data.PlayerOnePhotoUrl,
+                PlayerTwo = data.PlayerTwo,
+                PlayerTwoFirstName = data.PlayerTwoFirstName,
+                PlayerTwoLastName = data.PlayerTwoLastName,
+                PlayerTwoPhotoUrl = data.PlayerTwoPhotoUrl,
+                LeagueId = data.LeagueId,
+                StartTime = data.StartTime,
+                EndTime = data.EndTime,
+                PlayerOneScore = data.PlayerOneScore,
+                PlayerTwoScore = data.PlayerTwoScore,
+                MatchStarted = data.MatchStarted,
+                MatchEnded = data.MatchEnded,
+                MatchPaused = data.MatchPaused,
+                TotalPlayingTime = playingTime != null ? ToReadableAgeString(playingTime.Value) : null,
+            };
+            return match;
         }
     }
 }

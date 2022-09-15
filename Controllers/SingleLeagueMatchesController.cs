@@ -43,5 +43,31 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("{matchId}", Name = "GetSingleLeagueMatchById")]
+        [ProducesResponseType(typeof(IEnumerable<SingleLeagueMatchReadDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<SingleLeagueMatchReadDto>> GetSingleLeagueMatchById(int matchId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                bool hasPermission = await _singleLeagueMatchService.CheckMatchPermission(matchId, int.Parse(userId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var match = await _singleLeagueMatchService.GetSingleLeagueMatchByIdExtended(matchId);
+
+                if (match == null)
+                    return NotFound();
+
+                return Ok(_mapper.Map<SingleLeagueMatchReadDto>(match));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
