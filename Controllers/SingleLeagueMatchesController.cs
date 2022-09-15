@@ -105,5 +105,33 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpPut("reset-match")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> ResetSingleLeagueMatchById(int matchId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                var matchItem = await _singleLeagueMatchService.GetSingleLeagueMatchById(matchId);
+                
+                if (matchItem == null)
+                    return NotFound();
+
+                bool hasPermission = await _singleLeagueMatchService.CheckMatchPermission(matchId, int.Parse(userId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                _singleLeagueMatchService.ResetMatch(matchItem);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

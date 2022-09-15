@@ -16,6 +16,7 @@ namespace FoosballApi.Services
         Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdExtended(int matchId);
         Task<SingleLeagueMatchModel> GetSingleLeagueMatchById(int matchId);
         void UpdateSingleLeagueMatch(SingleLeagueMatchModel match);
+        void ResetMatch(SingleLeagueMatchModel match);
     }
 
     public class SingleLeagueMatchService : ISingleLeagueMatchService
@@ -396,6 +397,71 @@ namespace FoosballApi.Services
                     match_paused = match.MatchPaused
                 });
             }
+        }
+
+        private void DeleteAllGoalsByMatchId(int matchId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"DELETE FROM single_league_goals
+                    WHERE match_id = @match_id",
+                    new { match_id = matchId });
+            }
+        }
+
+        private void ResetAllColumns(SingleLeagueMatchModel match)
+        {
+            SingleLeagueMatchModel emptyMatch = new SingleLeagueMatchModel
+            {
+                Id = match.Id,
+                PlayerOne = match.PlayerOne,
+                PlayerTwo = match.PlayerTwo,
+                LeagueId = match.LeagueId,
+                StartTime = null,
+                EndTime = null,
+                PlayerOneScore = 0,
+                PlayerTwoScore = 0,
+                MatchStarted = false,
+                MatchEnded = false,
+                MatchPaused = false
+            };
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE single_league_matches
+                    SET start_time = @start_time, 
+                    end_time = @end_time,
+                    player_one_score = @player_one_score,
+                    player_two_score = @player_two_score,
+                    match_started = @match_started,
+                    match_ended = @match_ended,
+                    match_paused = @match_paused
+                    WHERE id = @id",
+                new 
+                { 
+                    start_time = emptyMatch.StartTime,
+                    end_time = emptyMatch.EndTime,
+                    player_one_score = emptyMatch.PlayerOneScore,
+                    player_two_score = emptyMatch.PlayerTwoScore,
+                    match_started = emptyMatch.MatchStarted,
+                    match_ended = emptyMatch.MatchEnded,
+                    match_paused = emptyMatch.MatchPaused,
+                    id = emptyMatch.Id
+                });
+            }
+        }
+
+        public void ResetMatch(SingleLeagueMatchModel match)
+        {
+            if (match == null)
+                throw new ArgumentNullException(nameof(match));
+
+            DeleteAllGoalsByMatchId(match.Id);
+
+            ResetAllColumns(match);
+
         }
     }
 }

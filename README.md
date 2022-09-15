@@ -506,7 +506,7 @@ These endpoints should be implemented
 | SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    | x      |
 | SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                    | x      |
 | SingleLeagueMatches   | GET    | Get sl match        | SingleLeagueMatches/{matchId}          | x      |
-| SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match        |        |
+| SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match        | x      |
 | Users                 | GET    | Get users           | Users                                  | x      |
 | Users                 | GET    | Get user by id      | Users/{id}                             | x      |
 | Users                 | PATCH  | Update user by id   | Users/{id}                             | x      |
