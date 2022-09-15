@@ -14,6 +14,8 @@ namespace FoosballApi.Services
         Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByOrganisationId(int organisationId, int leagueId);
         Task<bool> CheckMatchPermission(int matchId, int userId);
         Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdExtended(int matchId);
+        Task<SingleLeagueMatchModel> GetSingleLeagueMatchById(int matchId);
+        void UpdateSingleLeagueMatch(SingleLeagueMatchModel match);
     }
 
     public class SingleLeagueMatchService : ISingleLeagueMatchService
@@ -289,7 +291,7 @@ namespace FoosballApi.Services
 
         private async Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdData(int matchId)
         {
-             using (var conn = new NpgsqlConnection(_connectionString))
+            using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var query = await conn.QueryFirstAsync<SingleLeagueMatchModelExtended>(
                     @"SELECT slm.id AS Id, slm.player_one As PlayerOne, slm.player_two AS PlayerTwo, 
@@ -344,6 +346,56 @@ namespace FoosballApi.Services
                 TotalPlayingTime = playingTime != null ? ToReadableAgeString(playingTime.Value) : null,
             };
             return match;
+        }
+
+        public async Task<SingleLeagueMatchModel> GetSingleLeagueMatchById(int matchId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstAsync<SingleLeagueMatchModel>(
+                    @"SELECT slm.id AS Id, slm.player_one As PlayerOne, slm.player_two AS PlayerTwo, 
+                    slm.league_id AS LeagueId, slm.start_time AS StartTime, slm.end_time AS EndTime,
+                    slm.player_one_score AS PlayerOneScore, slm.player_two_score AS PlayerTwoScore, 
+                    slm.match_ended as MatchEnded, slm.match_paused AS MatchPaused, slm.match_started AS MatchStarted
+                    FROM single_league_matches slm
+                    WHERE id = @id",
+                new { id = matchId,  });
+                
+               return query;
+            }
+        }
+
+        public void UpdateSingleLeagueMatch(SingleLeagueMatchModel match)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Execute(
+                    @"UPDATE single_league_matches
+                    SET player_one = @player_one, 
+                    player_two = @player_two,
+                    league_id = @league_id,
+                    start_time = @start_time, 
+                    end_time = @end_time,
+                    player_one_score = @player_one_score,
+                    player_two_score = @player_two_score,
+                    match_started = @match_started,
+                    match_ended = @match_ended,
+                    match_paused = @match_paused
+                    WHERE id = @id",
+                new 
+                { 
+                    player_one = match.PlayerOne, 
+                    player_two = match.PlayerTwo,
+                    league_id = match.LeagueId,
+                    start_time = match.StartTime,
+                    end_time = match.EndTime,
+                    player_one_score = match.PlayerOneScore,
+                    player_two_score = match.PlayerTwoScore,
+                    match_started = match.MatchStarted,
+                    match_ended = match.MatchEnded,
+                    match_paused = match.MatchPaused
+                });
+            }
         }
     }
 }

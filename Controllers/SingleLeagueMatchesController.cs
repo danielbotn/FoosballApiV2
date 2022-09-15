@@ -2,6 +2,7 @@ using AutoMapper;
 using FoosballApi.Dtos.SingleLeagueMatches;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoosballApi.Controllers
@@ -63,6 +64,41 @@ namespace FoosballApi.Controllers
                     return NotFound();
 
                 return Ok(_mapper.Map<SingleLeagueMatchReadDto>(match));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPatch("")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<ActionResult> UpdateSingleLeagueMatch(int matchId, JsonPatchDocument<SingleLeagueMatchUpdateDto> patchDoc)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                bool hasPermission = await _singleLeagueMatchService.CheckMatchPermission(matchId, int.Parse(userId));
+
+                if (!hasPermission)
+                    return Forbid();
+
+                var match = await _singleLeagueMatchService.GetSingleLeagueMatchById(matchId);
+
+                if (match == null)
+                    return NotFound();
+
+                var matchToPatch = _mapper.Map<SingleLeagueMatchUpdateDto>(match);
+                patchDoc.ApplyTo(matchToPatch, ModelState);
+
+                if (!TryValidateModel(matchToPatch))
+                    return ValidationProblem(ModelState);
+
+                _mapper.Map(matchToPatch, match);
+
+                _singleLeagueMatchService.UpdateSingleLeagueMatch(match);
+
+                return NoContent();
             }
             catch (Exception e)
             {

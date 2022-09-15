@@ -504,7 +504,7 @@ These endpoints should be implemented
 | SingleLeagueGoals     | GET    | Get sl goal by gId  | SingleLeagueGoals/{goalId}             | x      |
 | SingleLeagueGoals     | DELETE | Delete slgoal by id | SingleLeagueGoals/{goalId}             | x      |
 | SingleLeagueMatches   | GET    | Get sl matches      | SingleLeagueMatches                    | x      |
-| SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                    |        |
+| SingleLeagueMatches   | PATCH  | Update sl match     | SingleLeagueMatches                    | x      |
 | SingleLeagueMatches   | GET    | Get sl match        | SingleLeagueMatches/{matchId}          | x      |
 | SingleLeagueMatches   | PUT    | Reset sl match      | SingleLeagueMatches/reset-match        |        |
 | Users                 | GET    | Get users           | Users                                  | x      |
