@@ -418,6 +418,17 @@ namespace FoosballApi.Services
             int totalGoalsScored = await GetTotalFreehandDoubleGoalsScored(userId);
             int? totalGoalsReceivedAsTeamA = await GetTotalFreehandDoubleGoalsReceivedAsTeamA(userId);
             int? totalGoalsReceivedAsTeamB = await GetTotalFreehandDoubleGoalsReceivedAsTeamB(userId);
+            
+            if (totalGoalsReceivedAsTeamA == null)
+            {
+                totalGoalsReceivedAsTeamA = 0;
+            }
+
+            if (totalGoalsReceivedAsTeamB == null)
+            {
+                totalGoalsReceivedAsTeamB = 0;
+            }
+
             result.Item1 = totalGoalsScored;
             result.Item2 = totalGoalsReceivedAsTeamA + totalGoalsReceivedAsTeamB;
             return result;
@@ -475,17 +486,22 @@ namespace FoosballApi.Services
             }
         }
 
-        private async Task<int> GetTotalDoubleLeagueGoalsScoredAsTeamTwo(int userId)
+        private async Task<int?> GetTotalDoubleLeagueGoalsScoredAsTeamTwo(int userId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var count = await conn.QueryFirstOrDefaultAsync<int>(
+                var count = await conn.QueryFirstOrDefaultAsync<int?>(
                     @"
                     SELECT SUM(dlm.team_two_score)
                     FROM double_league_matches dlm
                     JOIN double_league_players dlp on dlm.team_two_id = dlp.double_league_team_id
                     WHERE dlp.user_id = @userId",
                     new { userId });
+
+                if (count == null)
+                {
+                    return 0;
+                }
                 return count;
             }
         }
@@ -505,17 +521,21 @@ namespace FoosballApi.Services
             }
         }
 
-        private async Task<int> GetTotalDoubleLeagueGoalsReceivedAsTeamTwo(int userId)
+        private async Task<int?> GetTotalDoubleLeagueGoalsReceivedAsTeamTwo(int userId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var count = await conn.QueryFirstOrDefaultAsync<int>(
+                var count = await conn.QueryFirstOrDefaultAsync<int?>(
                     @"
                     SELECT SUM(dlm.team_one_score)
                     FROM double_league_matches dlm
                     JOIN double_league_players dlp on dlm.team_two_id = dlp.double_league_team_id
                     WHERE dlp.user_id = @userId",
                     new { userId });
+                if (count == null)
+                {
+                    return 0;
+                }
                 return count;
             }
         }
@@ -525,9 +545,9 @@ namespace FoosballApi.Services
             (int?, int?) result = (0, 0);
 
             int totalGoalsScoredAsTeamOne = await GetTotalDoubleLeagueGoalsScoredAsTeamOne(userId);
-            int totalGoalsScoredAsTeamTwo = await GetTotalDoubleLeagueGoalsScoredAsTeamTwo(userId);
+            int? totalGoalsScoredAsTeamTwo = await GetTotalDoubleLeagueGoalsScoredAsTeamTwo(userId);
             int totalGoalsReceivedAsTeamOne = await GetTotalDoubleLeagueGoalsReceivedAsTeamOne(userId);
-            int totalGoalsReceivedAsTeamTwo = await GetTotalDoubleLeagueGoalsReceivedAsTeamTwo(userId);
+            int? totalGoalsReceivedAsTeamTwo = await GetTotalDoubleLeagueGoalsReceivedAsTeamTwo(userId);
 
             int? totalGoalsAsTeamOne = totalGoalsScoredAsTeamOne;
             int? totalGoalsAsTeamTwo = totalGoalsScoredAsTeamTwo;
@@ -1520,7 +1540,7 @@ namespace FoosballApi.Services
                     player_two_team_b as PlayerTwoTeamB, organisation_id as OrganisationId, start_time as StartTime, end_time as EndTime, team_a_score as TeamAScore, team_b_score as TeamBScore,
                     nickname_team_a as NickNameTeamA, nickname_team_b as NicknameTeamB, up_to as UpTo, game_finished as GameFinished, game_paused as GamePaused
                     FROM freehand_double_matches
-                    WHERE (player_one_team_a = @userId OR player_two_team_a = @userId) AND game_finished = true
+                    WHERE (player_one_team_a = @userId OR player_two_team_a = @userId) AND game_finished = true AND end_time IS NOT NULL
                     ORDER BY id DESC
                     OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY",
                     new { userId = userId, offset = (pageNumber - 1) * pageSize, pageSize = pageSize });

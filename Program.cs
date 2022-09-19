@@ -36,7 +36,8 @@ builder.Services.AddAuthentication(x =>
         OnTokenValidated = context =>
         {
             var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
-            var userId = int.Parse(context.Principal.Identity.Name);
+            var name = context.Principal.FindFirst("name").Value;
+            var userId = int.Parse(name);
             var user = userService.GetUserByIdSync(userId);
             if (user == null)
             {

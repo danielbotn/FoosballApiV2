@@ -247,6 +247,7 @@ namespace FoosballApi.Services
                 Subject = new ClaimsIdentity(new Claim[]
                 {
                     new Claim(ClaimTypes.Name, user.Id.ToString()),
+                    new Claim("name", user.Id.ToString()),
                     new Claim("CurrentOrganisationId", user.CurrentOrganisationId.ToString()),
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),

@@ -47,11 +47,11 @@ namespace FoosballApi.Controllers
 
         [HttpGet("{id}", Name = "GetUserById")]
         [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status200OK)]
-        public ActionResult<UserReadDto> GetUserById(int id)
+        public async Task<ActionResult<UserReadDto>> GetUserById(int id)
         {
             try
             {
-                var userItem = _userService.GetUserById(id);
+                var userItem = await _userService.GetUserById(id);
 
                 if (userItem == null)
                     return NotFound();
