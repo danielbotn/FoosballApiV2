@@ -1391,7 +1391,9 @@ namespace FoosballApi.Services
             {
                 var freehandMatches = conn.Query<FreehandMatchModel>(
                     @"
-                    SELECT id, player_one_id as PlayerOneId, player_two_id as PlayerTwoId, player_one_score as PlayerOneScore, player_two_score as PlayerTwoScore, end_time as EndTime, game_finished as GameFinished
+                    SELECT id, player_one_id as PlayerOneId, player_two_id as PlayerTwoId, 
+                    player_one_score as PlayerOneScore, player_two_score as PlayerTwoScore, 
+                    end_time as EndTime, game_finished as GameFinished
                     FROM freehand_matches
                     WHERE (player_one_id = @userId OR player_two_id = @userId) AND game_finished = true
                     ORDER BY id DESC
