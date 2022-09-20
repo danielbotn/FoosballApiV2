@@ -1140,7 +1140,8 @@ namespace FoosballApi.Services
                     team_two_score as TeamTwoScore, match_started as MatchStarted, match_ended as MatchEnded, 
                     match_paused as MatchPaused
                     FROM double_league_matches
-                    WHERE team_one_id = @item OR team_two_id = @item",
+                    WHERE (team_one_id = @item OR team_two_id = @item) 
+                    AND match_ended = true AND end_time IS NOT NULL",
                     new { item });
                 return tmp.ToList();
             }
