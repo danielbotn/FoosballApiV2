@@ -514,3 +514,8 @@ These endpoints should be implemented
 | Users                 | GET    | Get user stats      | Users/stats                            | x      |
 | Users                 | GET    | Get last 10 matches | Users/last-ten-matches                 | x      |
 | Users                 | GET    | Get history         | Users/history                          | x      |
+
+# Https dev-certs
+
+dotnet dev-certs https --clean
+dotnet dev-certs https --trust

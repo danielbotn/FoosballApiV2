@@ -10,16 +10,21 @@ var builder = WebApplication.CreateBuilder(args);
 
 DotNetEnv.Env.Load();
 
+// Why was this added
+// https does not work when this is added in development
 var portVar = Environment.GetEnvironmentVariable("PORT");
 
-if (portVar is {Length: >0} && int.TryParse(portVar, out int port))
+if (!builder.Environment.IsDevelopment())
 {
-    builder.WebHost.ConfigureKestrel(options =>
+    if (portVar is {Length: >0} && int.TryParse(portVar, out int port))
     {
-        options.ListenAnyIP(5297);
-        options.ListenAnyIP(7145);
-        options.ListenAnyIP(port);
-    });
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.ListenAnyIP(5297);
+            options.ListenAnyIP(7145);
+            options.ListenAnyIP(port);
+        });
+    }
 }
 
 // Add services to the container.
