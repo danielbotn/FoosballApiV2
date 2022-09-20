@@ -723,8 +723,8 @@ namespace FoosballApi.Services
                     fdm.player_one_team_b as PlayerOneTeamB, fdm.player_two_team_b as PlayerTwoTeamB, 
                     fdm.team_a_score as TeamAScore, fdm.team_b_score as TeamBScore, fdm.end_time as EndTime
                     FROM freehand_double_matches fdm
-                    WHERE player_one_team_a = @userId OR player_two_team_a = @userId OR 
-                    player_one_team_b = @userId or player_two_team_b = @userId AND end_time != null
+                    WHERE (player_one_team_a = @userId OR player_two_team_a = @userId OR 
+                    player_one_team_b = @userId or player_two_team_b = @userId) AND end_time IS NOT NULL
                     ORDER BY fdm.end_time DESC
                     LIMIT 10
                     ",
@@ -1991,7 +1991,7 @@ namespace FoosballApi.Services
                     start_time as StartTime, end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore,
                     match_started as MatchStarted, match_ended as MatchEnded, match_paused as MatchPaused
                     FROM double_league_matches
-                    WHERE (team_one_id = @item OR team_two_id = @item) && end_time != null
+                    WHERE (team_one_id = @item OR team_two_id = @item) AND end_time != null
                     ORDER BY id DESC");
                 result = doubleLeagueMatches.ToList();
             }
