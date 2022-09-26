@@ -17,7 +17,7 @@ namespace FoosballApi.Services
 
             string query = "{ hardcodedString(locale: "
                 + language
-                + ") {matches newGame quickActions lastTenMatches newGame statistics history leagues pricing settings about logout language darkTheme lightTheme changePassword enableNotifications common security selectLanguage english islenska svenska won lost scored recieved goals username personalinformation user organisation integration slack discord matchDetails totalPlayingTime newMatch rematch twoPlayers fourPlayers choosePlayers match startGame chooseTeammate chooseOpponent chooseOpponents matchReport game resume pause close yes no cancel areYouSureAlert } }";
+                + ") {matches newGame quickActions lastTenMatches newGame statistics history leagues pricing settings about logout language darkTheme lightTheme changePassword enableNotifications common security selectLanguage english islenska svenska won lost scored recieved goals username personalinformation user organisation integration slack discord matchDetails totalPlayingTime newMatch rematch twoPlayers fourPlayers choosePlayers match startGame chooseTeammate chooseOpponent chooseOpponents matchReport game resume pause close yes no cancel areYouSureAlert currentOrganisation organisations players newOrganisation addPlayers nameOfNewOrganisation create newOrganisationSuccessMessage newOrganisationErrorMessage } }";
 
             var iCmsBody = new ICmsBody
             {

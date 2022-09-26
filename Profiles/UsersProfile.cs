@@ -21,6 +21,9 @@ namespace FoosballApi.Profiles
         {
             CreateMap<User, UserReadDto>()
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.Created_at));
+            
+            CreateMap<UserJoin, UserReadJoinDto>()
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.Created_at));
 
             CreateMap<UserUpdateDto, User>();
             CreateMap<User, UserUpdateDto>();

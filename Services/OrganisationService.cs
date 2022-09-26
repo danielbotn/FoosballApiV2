@@ -63,8 +63,25 @@ namespace FoosballApi.Services
                
                 result.Id = newOrganistionId;
             }
+
+            await AddPlayerToOrganisation(result.Id, userId);
             
             return result;
+        }
+
+        private async Task AddPlayerToOrganisation(int organisationId, int userId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var newOrganistionId = await conn.ExecuteAsync(
+                    @"INSERT INTO organisation_list (organisation_id, user_id, is_admin)
+                    VALUES (@organisation_id, @user_id, @is_admin)",
+                    new { 
+                        organisation_id = organisationId,
+                        user_id = userId, 
+                        is_admin = true
+                    });
+            }
         }
 
         public void UpdateOrganisation(OrganisationModel organisation)

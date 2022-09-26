@@ -56,5 +56,14 @@ namespace FoosballApi.Models.Cms
         public string no { get; set; }
         public string cancel { get; set; }
         public string areYouSureAlert { get; set; }
+        public string currentOrganisation { get ; set; }
+        public string organisations { get; set; }
+        public string players { get; set; }
+        public string newOrganisation { get; set; }
+        public string addPlayers { get; set; }
+        public string nameOfNewOrganisation { get; set; }
+        public string create { get; set; }
+        public string newOrganisationSuccessMessage { get; set; }
+        public string newOrganisationErrorMessage { get; set; }
     }
 }

@@ -14,7 +14,7 @@ namespace FoosballApi.Services
 {
     public interface IUserService
     {
-        Task<List<User>> GetAllUsers(int currentOrganisationId);
+        Task<List<UserJoin>> GetAllUsers(int currentOrganisationId);
         Task<User> GetUserById(int id);
         User GetUserByIdSync(int id);
         void UpdateUser(User user);
@@ -39,14 +39,16 @@ namespace FoosballApi.Services
             #endif
         }
 
-       public async Task<List<User>> GetAllUsers(int currentOrganisationId)
+       public async Task<List<UserJoin>> GetAllUsers(int currentOrganisationId)
        {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var users = await conn.QueryAsync<User>(
-                    @"SELECT id, email, first_name as FirstName, last_name as LastName, created_at, 
-                    current_organisation_id as CurrentOrganisationId, photo_url as PhotoUrl 
-                    FROM Users WHERE current_organisation_id = @currentOrganisationId",
+                var users = await conn.QueryAsync<UserJoin>(
+                    @"SELECT DISTINCT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl, ol.is_admin as IsAdmin
+                    FROM Users u 
+                    JOIN organisation_list ol on ol.user_id = u.id
+                    WHERE u.current_organisation_id = @currentOrganisationId",
                 new { currentOrganisationId });
                 return users.ToList();
             }

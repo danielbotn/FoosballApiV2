@@ -29,7 +29,7 @@ namespace FoosballApi.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<UserReadDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<UserReadJoinDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult> GetAllUsers()
         {
             try
@@ -37,7 +37,7 @@ namespace FoosballApi.Controllers
                 string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
                 var allUsers = await _userService.GetAllUsers(int.Parse(currentOrganisationId));
 
-                return Ok(_mapper.Map<IEnumerable<UserReadDto>>(allUsers));
+                return Ok(_mapper.Map<IEnumerable<UserReadJoinDto>>(allUsers));
             }
             catch (Exception e)
             {
