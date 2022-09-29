@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace FoosballApi.Dtos.Organisations
@@ -16,5 +15,8 @@ namespace FoosballApi.Dtos.Organisations
 
         [Required]
         public OrganisationType OrganisationType { get; set; }
+
+        [Required]
+        public string OrganisationCode { get; set; }
     }
 }

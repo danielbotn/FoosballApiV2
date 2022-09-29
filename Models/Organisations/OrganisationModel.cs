@@ -16,5 +16,8 @@ namespace FoosballApi
 
         [Required]
         public OrganisationType OrganisationType { get; set; }
+        
+        [Required]
+        public string OrganisationCode { get; set; }
     }
 }

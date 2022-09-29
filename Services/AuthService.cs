@@ -187,7 +187,7 @@ namespace FoosballApi.Services
         {
             VerificationModel vModel = new VerificationModel();
             vModel.UserId = user.Id;
-            vModel.VerificationToken = RandomTokenString();
+            vModel.VerificationToken = GetRandomTokenString();
             vModel.HasVerified = false;
             
             // using dapper
@@ -202,16 +202,30 @@ namespace FoosballApi.Services
             return vModel;
         }
 
-        private string RandomTokenString()
+        private string GetRandomTokenString() 
         {
-            using var rngCryptoServiceProvider = new RNGCryptoServiceProvider();
-            var randomBytes = new byte[40];
-            rngCryptoServiceProvider.GetBytes(randomBytes);
-            // convert random bytes to hex string
-            string token = BitConverter.ToString(randomBytes).Replace("-", "");
+            var randomNumber = new byte[40]; // or 32
+            string token = "";
+
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                token = Convert.ToBase64String(randomNumber);
+            }
             string firstFiveOfToken = token.Substring(0, 5);
             return firstFiveOfToken;
         }
+
+        // private string RandomTokenString()
+        // {
+        //     using var rngCryptoServiceProvider = new RNGCryptoServiceProvider();
+        //     var randomBytes = new byte[40];
+        //     rngCryptoServiceProvider.GetBytes(randomBytes);
+        //     // convert random bytes to hex string
+        //     string token = BitConverter.ToString(randomBytes).Replace("-", "");
+        //     string firstFiveOfToken = token.Substring(0, 5);
+        //     return firstFiveOfToken;
+        // }
 
         // public void ResetPassword(ResetPasswordRequest model)
         // {

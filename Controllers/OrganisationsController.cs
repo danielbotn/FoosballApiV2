@@ -34,12 +34,12 @@ namespace FoosballApi.Controllers
                 if (!hasPermission)
                     return Forbid();
 
-                var userItem = await _organisationService.GetOrganisationById(id);
+                var organisation = await _organisationService.GetOrganisationById(id);
 
-                if (userItem == null)
+                if (organisation == null)
                     return NotFound();
 
-                return Ok(_mapper.Map<OrganisationReadDto>(userItem));
+                return Ok(_mapper.Map<OrganisationReadDto>(organisation));
             }
             catch (Exception e)
             {

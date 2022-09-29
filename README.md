@@ -519,3 +519,17 @@ These endpoints should be implemented
 
 dotnet dev-certs https --clean
 dotnet dev-certs https --trust
+
+# Tmp, need to add this to live database
+
+ALTER TABLE organisations
+ADD organisation_code TEXT
+
+ALTER TABLE organisations
+ADD CONSTRAINT orgnisation_code_unique UNIQUE (organisation_code);
+
+CREATE UNIQUE INDEX idx_organisation_code
+ON organisations(organisation_code);
+
+ALTER TABLE organisation_list
+ADD is_admin boolean

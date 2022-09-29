@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Dapper;
 using FoosballApi.Dtos.Organisations;
 using FoosballApi.Models;
@@ -35,11 +36,38 @@ namespace FoosballApi.Services
             {
                 var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
                     @"SELECT id as Id, name as Name, created_at as CreatedAt,
-                    organisation_type as OrganisationType
+                    organisation_type as OrganisationType, organisation_code AS OrganisationCode
                     FROM organisations
                     WHERE id = @id",
                 new { id = id });
                 return organisation;
+            }
+        }
+
+        private string CreateOrganisationCode()
+        {
+            var randomNumber = new byte[40]; // or 32
+            string token = "";
+
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                token = Convert.ToBase64String(randomNumber);
+            }
+            string firstFiveOfToken = token.Substring(0, 10);
+            return firstFiveOfToken;
+        }
+
+        private async Task<string> CheckIfOrganisationCodeExists(string organisationCode)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var orgCode = await conn.QueryFirstOrDefaultAsync<string>(
+                    @"SELECT organisation_code
+                    FROM organisations
+                    WHERE organisation_code = @organisation_code",
+                new { organisation_code = organisationCode });
+                return orgCode;
             }
         }
 
@@ -49,16 +77,27 @@ namespace FoosballApi.Services
             DateTime now = DateTime.Now;
             result.CreatedAt = now;
             result.Name = organisation.Name;
+            result.OrganisationCode = CreateOrganisationCode();
+
+            int retry = 0;
+            var orgCodeExist = await CheckIfOrganisationCodeExists(result.OrganisationCode);
+            while (orgCodeExist != null && retry < 10) 
+            {
+                retry++;
+                result.OrganisationCode = CreateOrganisationCode();
+                orgCodeExist = await CheckIfOrganisationCodeExists(result.OrganisationCode);
+            }
             
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var newOrganistionId = await conn.ExecuteScalarAsync<int>(
-                    @"INSERT INTO organisations (name, created_at, organisation_type)
-                    VALUES (@name, @created_at, @organisation_type) RETURNING id",
+                    @"INSERT INTO organisations (name, created_at, organisation_type, organisation_code)
+                    VALUES (@name, @created_at, @organisation_type, @organisation_code) RETURNING id",
                     new { 
                         name = organisation.Name, 
                         created_at = now, 
                         organisation_type = organisation.OrganisationType,
+                        organisation_code = result.OrganisationCode
                     });
                
                 result.Id = newOrganistionId;
@@ -153,7 +192,7 @@ namespace FoosballApi.Services
             {
                 var query = await conn.QueryAsync<OrganisationModel>(
                     @"SELECT o.id as Id, o.name as Name, o.created_at as CreatedAt,
-                    o.organisation_type as OrganistionType
+                    o.organisation_type as OrganistionType, o.organisation_code AS OrganisationCode
                     FROM organisations o
                     JOIN organisation_list ol ON ol.organisation_id = o.id
                     WHERE ol.user_id = @user_id",
