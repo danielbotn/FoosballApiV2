@@ -48,7 +48,7 @@ namespace FoosballApi.Services
                     u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl, ol.is_admin as IsAdmin
                     FROM Users u 
                     JOIN organisation_list ol on ol.user_id = u.id
-                    WHERE u.current_organisation_id = @currentOrganisationId",
+                    WHERE ol.organisation_id = @currentOrganisationId",
                 new { currentOrganisationId });
                 return users.ToList();
             }

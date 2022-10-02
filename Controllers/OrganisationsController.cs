@@ -144,5 +144,24 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpPost("join-organisation")]
+        public async Task<ActionResult> JoinOrganisation([FromBody] JoinOrganisationModel joinOrganisationModel)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                bool isAllowed = await _organisationService.JoinOrganisation(joinOrganisationModel, int.Parse(userId));
+
+                if (!isAllowed)
+                    return Forbid();
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

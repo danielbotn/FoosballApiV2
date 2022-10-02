@@ -15,7 +15,7 @@ namespace FoosballApi.Services
         void UpdateOrganisation(OrganisationModel organisation);
         void DeleteOrganisation(OrganisationModel organisation);
         Task<IEnumerable<OrganisationModel>> GetOrganisationsByUser(int id);
-
+        Task<bool> JoinOrganisation(JoinOrganisationModel joinOrganisationModel, int userId);
     }
 
     public class OrganisationService : IOrganisationService
@@ -103,12 +103,12 @@ namespace FoosballApi.Services
                 result.Id = newOrganistionId;
             }
 
-            await AddPlayerToOrganisation(result.Id, userId);
+            await AddPlayerToOrganisation(result.Id, userId, true);
             
             return result;
         }
 
-        private async Task AddPlayerToOrganisation(int organisationId, int userId)
+        private async Task AddPlayerToOrganisation(int organisationId, int userId, bool isAdmin)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
@@ -118,7 +118,7 @@ namespace FoosballApi.Services
                     new { 
                         organisation_id = organisationId,
                         user_id = userId, 
-                        is_admin = true
+                        is_admin = isAdmin
                     });
             }
         }
@@ -200,6 +200,97 @@ namespace FoosballApi.Services
                 
                 return query;
             }
+        }
+
+        private int ParseOrganisationId(JoinOrganisationModel joinOrganisationModel)
+        {
+            // 'organisationCode: ${organisationData.organisationCode}, organisationId: ${organisationData.id}'
+            string toBeSearched = "organisationId: ";
+            string code = joinOrganisationModel.OrganisationCodeAndOrganisationId
+                .Substring(joinOrganisationModel.OrganisationCodeAndOrganisationId
+                .IndexOf(toBeSearched) + toBeSearched.Length);
+
+            return int.Parse(code);
+        }
+
+        private string ParseOrganisationCode(JoinOrganisationModel joinOrganisationModel)
+        {
+            var str = joinOrganisationModel.OrganisationCodeAndOrganisationId.Replace("organisationId:", "").Replace("  ", " ");
+            var str2 = str.Replace("organisationCode:", "").Replace(" ", "");
+
+            int index = str2.IndexOf(',');
+            if (index >= 0)
+                str2 = str2.Substring(0, index);
+
+            return str2;
+        }
+
+        private async Task<bool> CheckOrganisationCode(string organisationCode, int organisationId)
+        {
+            bool result = false;
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
+                    @"SELECT id AS Id, organisation_code AS OrganisationCode
+                    FROM organisations
+                    WHERE organisation_code = @organisation_code AND id = @id",
+                new { organisation_code = organisationCode, id = organisationId});
+
+                if (query != null)
+                {
+                    if (query.Id == organisationId && query.OrganisationCode == organisationCode)
+                    {
+                        result = true;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<bool> IsUserAlreadyMemberOfOrganisation(int userId, int organisationId)
+        {
+            bool result = true;
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
+                    @"SELECT id
+                    FROM organisation_list
+                    WHERE organisation_id = @organisation_id AND user_id = @user_id",
+                new { organisation_id = organisationId, user_id = userId});
+
+                if (query == null)
+                {
+                    result = false;
+                }
+                else 
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<bool> JoinOrganisation(JoinOrganisationModel joinOrganisationModel, int userId)
+        {
+            bool result = false;
+            int organisationId = ParseOrganisationId(joinOrganisationModel);
+            string organisationCode = ParseOrganisationCode(joinOrganisationModel);
+
+            bool isUserAlreadyMember = await IsUserAlreadyMemberOfOrganisation(userId, organisationId);
+
+            bool isAllowed = await CheckOrganisationCode(organisationCode, organisationId);
+            
+            if (!isUserAlreadyMember && isAllowed)
+            {
+                result = true;
+                await AddPlayerToOrganisation(organisationId, userId, false);
+            }
+
+            return result;
         }
     }
 }
