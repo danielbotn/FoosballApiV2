@@ -65,5 +65,26 @@ namespace FoosballApi.Models.Cms
         public string create { get; set; }
         public string newOrganisationSuccessMessage { get; set; }
         public string newOrganisationErrorMessage { get; set; }
+        public string organisationSettings { get; set; }
+        public string createNewOrganisation { get; set; }
+        public string joinExistingOrganisation { get; set; }
+        public string managePlayers { get; set; }
+        public string changeOrganisation { get; set; }
+        public string information { get; set; }
+        public string organisationCode { get; set; }
+        public string letOtherPlayersJoinYourOrganisation { get; set; }
+        public string joinOrganisation { get; set; }
+        public string scanQrCode { get; set; }
+        public string success { get; set; }
+        public string failure { get; set; }
+        public string obsFailure { get; set; }
+        public string cameraPermissionWasDenied { get; set; }
+        public string unknownError { get; set; }
+        public string youPressedTheBackButton { get; set; }
+        public string joinOrganisationInfo { get; set; }
+        public string joinOrganisationInfo2 { get; set; }
+        public string actions { get; set; }
+        public string joinExistingOrganisationWithQrCode { get; set; }
+        public string organisationCardInfo { get; set; }
     }
 }
