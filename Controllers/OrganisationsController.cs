@@ -146,6 +146,8 @@ namespace FoosballApi.Controllers
         }
 
         [HttpPost("join-organisation")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> JoinOrganisation([FromBody] JoinOrganisationModel joinOrganisationModel)
         {
             try
