@@ -59,9 +59,11 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var user = await conn.QueryFirstOrDefaultAsync<User>(
-                    @"SELECT id, email, first_name as FirstName, last_name as LastName, created_at, 
-                    current_organisation_id as CurrentOrganisationId, photo_url as PhotoUrl 
-                    FROM Users WHERE id = @id",
+                    @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin
+                    FROM Users u
+                    JOIN organisation_list o ON o.user_id = u.id
+                    WHERE u.id = @id",
                     new { id });
                 return user;
             }

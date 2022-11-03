@@ -24,5 +24,6 @@ namespace FoosballApi.Dtos.Users
         public int? CurrentOrganisationId { get; set; }
 
         public string PhotoUrl { get; set; }
+        public bool? IsAdmin { get; set; }
     }
 }

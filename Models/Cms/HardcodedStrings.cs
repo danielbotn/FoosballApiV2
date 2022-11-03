@@ -86,5 +86,6 @@ namespace FoosballApi.Models.Cms
         public string actions { get; set; }
         public string joinExistingOrganisationWithQrCode { get; set; }
         public string organisationCardInfo { get; set; }
+        public string managePlayer { get; set; }
     }
 }
