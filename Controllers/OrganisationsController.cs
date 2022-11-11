@@ -165,5 +165,35 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpPut("update-is-admin")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> UpdateOrganisationListIsAdmin(int organisationId, int userIdToChange, bool isAdmin)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                bool hasPermission = await _organisationService.HasUserOrganisationPermission(int.Parse(userId), organisationId);
+                bool hasPermissionUserToChange = await _organisationService.HasUserOrganisationPermission(userIdToChange, organisationId);
+
+                if (!hasPermission || !hasPermissionUserToChange)
+                    return Forbid();
+                
+                bool updateSuccessfull = await _organisationService.UpdateIsAdmin(organisationId, userIdToChange, isAdmin);
+
+                if (!updateSuccessfull)
+                {
+                    return Forbid();
+                }
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

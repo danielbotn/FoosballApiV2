@@ -16,6 +16,7 @@ namespace FoosballApi.Services
         void DeleteOrganisation(OrganisationModel organisation);
         Task<IEnumerable<OrganisationModel>> GetOrganisationsByUser(int id);
         Task<bool> JoinOrganisation(JoinOrganisationModel joinOrganisationModel, int userId);
+        Task<bool> UpdateIsAdmin(int organisationId, int userId, bool isAdmin);
     }
 
     public class OrganisationService : IOrganisationService
@@ -288,6 +289,26 @@ namespace FoosballApi.Services
             {
                 result = true;
                 await AddPlayerToOrganisation(organisationId, userId, false);
+            }
+
+            return result;
+        }
+
+        public async Task<bool> UpdateIsAdmin(int organisationId, int userId, bool isAdmin)
+        {
+            bool result = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var updateStatement = await conn.ExecuteAsync(
+                    @"UPDATE organisation_list
+                    SET is_admin = @is_admin
+                    WHERE organisation_id = @organisation_id AND user_id = @user_id",
+                    new { is_admin = isAdmin, organisation_id = organisationId, user_id = userId });
+
+                if (updateStatement > 0) 
+                {
+                    result = true;
+                }
             }
 
             return result;
