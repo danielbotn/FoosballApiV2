@@ -18,5 +18,6 @@ namespace FoosballApi.Models.Users
 
         public string PhotoUrl { get; set; }
         public bool IsAdmin { get; set; }
+        public bool IsDeleted { get; set; }
     }
 }

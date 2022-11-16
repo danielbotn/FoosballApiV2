@@ -125,7 +125,7 @@ namespace FoosballApi.Controllers
                 if (!hasPermission)
                     return Forbid();
 
-                _goalService.DeleteFreehandGoal(goalItem);
+                await _goalService.DeleteFreehandGoal(goalItem);
 
                 return NoContent();
             }

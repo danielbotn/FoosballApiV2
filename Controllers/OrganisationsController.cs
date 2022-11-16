@@ -195,5 +195,50 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpPut("leave-or-rejoin-organisation")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> LeaveOrRejoinOrganisation(int organisationId, int userId, bool isDeleted)
+        {
+            try
+            {
+                string CurrentuserId = User.Identity.Name;
+                
+                var org = await _organisationService.GetOrganisationsByUser(int.Parse(CurrentuserId));
+
+                bool sameOrganisation = false;
+                foreach (var item in org)
+                {
+                    if (item.Id == organisationId)
+                    {
+                        sameOrganisation = true;
+                        break;
+                    }
+                }
+
+                bool hasPermission = await _organisationService.HasUserOrganisationPermission(userId, organisationId);
+
+                if (!sameOrganisation || !hasPermission)
+                {
+                    return Forbid();
+                }
+
+                bool updateStatement = await _organisationService.LeaveOrRejoinOrganisation(organisationId, userId, isDeleted);
+
+                if (updateStatement)
+                {
+                    return Ok();
+                }
+
+                return StatusCode(500);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+
+        }
     }
 }

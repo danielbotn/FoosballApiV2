@@ -13,7 +13,7 @@ namespace FoosballApi.Services
         Task<FreehandGoalModelExtended> GetFreehandGoalById(int goalId);
         Task<FreehandGoalModel> GetFreehandGoalByIdFromDatabase(int goalId);
         Task<FreehandGoalModel> CreateFreehandGoal(int userId, FreehandGoalCreateDto freehandGoalCreateDto);
-        void DeleteFreehandGoal(FreehandGoalModel freehandGoalModel);
+        Task DeleteFreehandGoal(FreehandGoalModel freehandGoalModel);
     }
     public class FreehandGoalService : IFreehandGoalService
     {
@@ -278,7 +278,7 @@ namespace FoosballApi.Services
             }
         }
 
-        private async void SubtractFreehandMatchScore(FreehandGoalModel freehandGoalModel)
+        private async Task SubtractFreehandMatchScore(FreehandGoalModel freehandGoalModel)
         {
             var match = await GetFreehandMatchById(freehandGoalModel.MatchId);
             if (freehandGoalModel.ScoredByUserId == match.PlayerOneId)
@@ -303,25 +303,25 @@ namespace FoosballApi.Services
             }
         }
 
-        private void DeleteGoal(int id)
+        private async Task DeleteGoal(int id)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                conn.ExecuteAsync(
+                await conn.ExecuteAsync(
                     @"DELETE FROM freehand_goals
                     WHERE id = @id",
                     new { id = id });
             }
         }
 
-        public void DeleteFreehandGoal(FreehandGoalModel freehandGoalModel)
+        public async Task DeleteFreehandGoal(FreehandGoalModel freehandGoalModel)
         {
             if (freehandGoalModel == null)
             {
                 throw new ArgumentNullException(nameof(freehandGoalModel));
             }
-            SubtractFreehandMatchScore(freehandGoalModel);
-            DeleteGoal(freehandGoalModel.Id);
+            await SubtractFreehandMatchScore(freehandGoalModel);
+            await DeleteGoal(freehandGoalModel.Id);
         }
 
         public async Task<FreehandGoalModel> GetFreehandGoalByIdFromDatabase(int goalId)

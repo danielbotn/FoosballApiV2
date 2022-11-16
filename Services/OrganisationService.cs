@@ -17,6 +17,7 @@ namespace FoosballApi.Services
         Task<IEnumerable<OrganisationModel>> GetOrganisationsByUser(int id);
         Task<bool> JoinOrganisation(JoinOrganisationModel joinOrganisationModel, int userId);
         Task<bool> UpdateIsAdmin(int organisationId, int userId, bool isAdmin);
+        Task<bool> LeaveOrRejoinOrganisation(int organisationId, int userId, bool isDeleted);
     }
 
     public class OrganisationService : IOrganisationService
@@ -114,12 +115,13 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var newOrganistionId = await conn.ExecuteAsync(
-                    @"INSERT INTO organisation_list (organisation_id, user_id, is_admin)
-                    VALUES (@organisation_id, @user_id, @is_admin)",
+                    @"INSERT INTO organisation_list (organisation_id, user_id, is_admin, is_deleted)
+                    VALUES (@organisation_id, @user_id, @is_admin, @is_deleted)",
                     new { 
                         organisation_id = organisationId,
                         user_id = userId, 
-                        is_admin = isAdmin
+                        is_admin = isAdmin,
+                        is_deleted = false
                     });
             }
         }
@@ -299,11 +301,59 @@ namespace FoosballApi.Services
             bool result = false;
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var updateStatement = await conn.ExecuteAsync(
-                    @"UPDATE organisation_list
-                    SET is_admin = @is_admin
-                    WHERE organisation_id = @organisation_id AND user_id = @user_id",
-                    new { is_admin = isAdmin, organisation_id = organisationId, user_id = userId });
+                int updateStatement;
+
+                if (isAdmin == true)
+                {
+                    updateStatement = await conn.ExecuteAsync(
+                        @"UPDATE organisation_list
+                        SET is_admin = @is_admin, is_deleted = @is_deleted
+                        WHERE organisation_id = @organisation_id AND user_id = @user_id",
+                        new { is_admin = isAdmin, is_deleted = false, organisation_id = organisationId, user_id = userId });
+                }
+                else
+                {
+                    updateStatement = await conn.ExecuteAsync(
+                        @"UPDATE organisation_list
+                        SET is_admin = @is_admin
+                        WHERE organisation_id = @organisation_id AND user_id = @user_id",
+                        new { is_admin = isAdmin, organisation_id = organisationId, user_id = userId });
+                }
+
+
+                if (updateStatement > 0) 
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<bool> LeaveOrRejoinOrganisation(int organisationId, int userId, bool isDeleted)
+        {
+            bool result = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                int updateStatement;
+
+                if (isDeleted == true)
+                {
+                    updateStatement = await conn.ExecuteAsync(
+                        @"UPDATE organisation_list
+                        SET is_deleted = @is_deleted, is_admin = @is_admin
+                        WHERE organisation_id = @organisation_id AND user_id = @user_id",
+                        new { is_deleted = isDeleted, is_admin = false, organisation_id = organisationId, user_id = userId });
+                }
+                else
+                {
+                    updateStatement = await conn.ExecuteAsync(
+                        @"UPDATE organisation_list
+                        SET is_deleted = @is_deleted
+                        WHERE organisation_id = @organisation_id AND user_id = @user_id",
+                        new { is_deleted = isDeleted, organisation_id = organisationId, user_id = userId });
+
+                }
 
                 if (updateStatement > 0) 
                 {

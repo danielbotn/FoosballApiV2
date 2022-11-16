@@ -45,7 +45,8 @@ namespace FoosballApi.Services
             {
                 var users = await conn.QueryAsync<UserJoin>(
                     @"SELECT DISTINCT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
-                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl, ol.is_admin as IsAdmin
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl, ol.is_admin as IsAdmin,
+                    ol.is_deleted as IsDeleted
                     FROM Users u 
                     JOIN organisation_list ol on ol.user_id = u.id
                     WHERE ol.organisation_id = @currentOrganisationId",
@@ -60,7 +61,8 @@ namespace FoosballApi.Services
             {
                 var user = await conn.QueryFirstOrDefaultAsync<User>(
                     @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
-                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
+                    o.is_deleted as IsDeleted
                     FROM Users u
                     JOIN organisation_list o ON o.user_id = u.id
                     WHERE u.id = @id",

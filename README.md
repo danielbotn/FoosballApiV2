@@ -533,3 +533,6 @@ ON organisations(organisation_code);
 
 ALTER TABLE organisation_list
 ADD is_admin boolean
+
+alter table organisation_list
+add column "is_deleted" BOOLEAN DEFAULT FALSE
