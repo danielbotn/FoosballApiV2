@@ -89,5 +89,7 @@ namespace FoosballApi.Models.Cms
         public string managePlayer { get; set; }
         public string admin { get; set; }
         public string deleteUser { get; set; }
+        public string active { get; set; }
+        public string inactive { get; set; }
     }
 }
