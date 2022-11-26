@@ -18,6 +18,7 @@ namespace FoosballApi.Services
         Task<bool> JoinOrganisation(JoinOrganisationModel joinOrganisationModel, int userId);
         Task<bool> UpdateIsAdmin(int organisationId, int userId, bool isAdmin);
         Task<bool> LeaveOrRejoinOrganisation(int organisationId, int userId, bool isDeleted);
+        Task<bool> ChangeCurrentOrganisation(int userId, int currentOrganisationId, int newOrganisationId);
     }
 
     public class OrganisationService : IOrganisationService
@@ -362,6 +363,26 @@ namespace FoosballApi.Services
             }
 
             return result;
+        }
+
+        public async Task<bool> ChangeCurrentOrganisation(int userId, int currentOrganisationId, int newOrganisationId)
+        {
+            bool updateSuccessfull = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                int updateStatement = await conn.ExecuteAsync(
+                    @"UPDATE users
+                    SET current_organisation_id = @current_organisation_id
+                    WHERE id = @id",
+                    new { current_organisation_id = newOrganisationId, id = userId });
+
+                if (updateStatement > 0)
+                {
+                    updateSuccessfull = true;
+                }
+            }
+
+            return updateSuccessfull;
         }
     }
 }

@@ -240,5 +240,32 @@ namespace FoosballApi.Controllers
             }
 
         }
+
+        [HttpPut("change-current-organisation")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> ChangeCurrentOrganisation(int userId, int currentOrganisationId, int newOrganisationId)
+        {
+            try
+            {
+                bool hasPermissionCurrent = await _organisationService.HasUserOrganisationPermission(userId, currentOrganisationId);
+                bool hasPermissionNew = await _organisationService.HasUserOrganisationPermission(userId, newOrganisationId);
+
+                if (!hasPermissionCurrent || !hasPermissionNew)
+                    return Forbid();
+                
+                bool upadateStatement = await _organisationService.ChangeCurrentOrganisation(userId, currentOrganisationId, newOrganisationId);
+
+                if (!upadateStatement)
+                    return StatusCode(500);
+                
+                return Ok();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }
