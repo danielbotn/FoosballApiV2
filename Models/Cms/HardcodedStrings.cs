@@ -91,5 +91,6 @@ namespace FoosballApi.Models.Cms
         public string deleteUser { get; set; }
         public string active { get; set; }
         public string inactive { get; set; }
+        public string changeOrganisationAlertText { get; set; }
     }
 }
