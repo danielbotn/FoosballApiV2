@@ -12,7 +12,7 @@ namespace FoosballApi.Services
         Task<FreehandDoubleGoalModel> GetFreehandDoubleGoal(int goalId);
         Task<bool> CheckGoalPermission(int userId, int matchId, int goalId);
         Task<FreehandDoubleGoalModel> CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto);
-        void DeleteFreehandGoal(FreehandDoubleGoalModel goalItem);
+        Task DeleteFreehandGoal(FreehandDoubleGoalModel goalItem);
         void UpdateFreehanDoubledGoal(FreehandDoubleGoalModel goalItem);
     }
 
@@ -72,8 +72,10 @@ namespace FoosballApi.Services
             }
         }
 
-        private async void UpdateFreehandDoubleMatchScore(int userId, FreehandDoubleGoalCreateDto freehandGoalCreateDto)
+        private async Task<bool> UpdateFreehandDoubleMatchScore(int userId, FreehandDoubleGoalCreateDto freehandGoalCreateDto)
         {
+            bool result = false;
+            int updateStatment;
             FreehandDoubleMatchModel fmm = await GetFreehandDoubleMatchById(freehandGoalCreateDto.DoubleMatchId);
             if (fmm.PlayerOneTeamA == freehandGoalCreateDto.ScoredByUserId || fmm.PlayerTwoTeamA == freehandGoalCreateDto.ScoredByUserId)
             {
@@ -89,22 +91,46 @@ namespace FoosballApi.Services
             {
                 fmm.EndTime = DateTime.Now;
                 fmm.GameFinished = true;
+
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    var sql = @"
+                        UPDATE freehand_double_matches
+                        SET team_a_score = @team_a_score, team_b_score = @team_b_score, 
+                        end_time = @end_time, game_finished = @game_finished, game_paused = @game_paused
+                        WHERE id = @id";
+                    updateStatment = await connection.ExecuteAsync(sql, new {
+                        team_a_score = fmm.TeamAScore,
+                        team_b_score = fmm.TeamBScore,
+                        end_time = fmm.EndTime,
+                        game_finished = fmm.GameFinished,
+                        game_paused = false,
+                        id = fmm.Id
+                    });
+                }
+            }
+            else
+            {
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    var sql = @"
+                        UPDATE freehand_double_matches
+                        SET team_a_score = @team_a_score, team_b_score = @team_b_score
+                        WHERE id = @id";
+                    updateStatment = await connection.ExecuteAsync(sql, new {
+                        team_a_score = fmm.TeamAScore,
+                        team_b_score = fmm.TeamBScore,
+                        id = fmm.Id
+                    });
+                }
             }
 
-            // update freehand double match using dapper
-            // Það þarf að athuga þetta
-            using (var connection = new NpgsqlConnection(_connectionString))
+            if (updateStatment > 0)
             {
-                var sql = @"
-                    UPDATE freehand_double_matches
-                    SET team_a_score = @team_a_score, team_b_score = @team_b_score
-                    WHERE id = @id";
-                await connection.ExecuteAsync(sql, new {
-                    team_a_score = fmm.TeamAScore,
-                    team_b_score = fmm.TeamBScore,
-                    id = fmm.Id
-                });
+                result = true;
             }
+
+            return result;
         }
 
         public async Task<FreehandDoubleGoalModel> CreateDoubleFreehandGoal(int userId, FreehandDoubleGoalCreateDto freehandDoubleGoalCreateDto)
@@ -129,20 +155,25 @@ namespace FoosballApi.Services
                         double_match_id = freehandDoubleGoalCreateDto.DoubleMatchId, 
                         scored_by_user_id = freehandDoubleGoalCreateDto.ScoredByUserId,
                         scorer_team_score = freehandDoubleGoalCreateDto.ScorerTeamScore,
-                        opponent_team_score = freehandDoubleGoalCreateDto.ScorerTeamScore,
+                        opponent_team_score = freehandDoubleGoalCreateDto.OpponentTeamScore,
                         winner_goal = freehandDoubleGoalCreateDto.WinnerGoal,
                     });
                
                 fhg.Id = nGoal;
             }
 
-            UpdateFreehandDoubleMatchScore(userId, freehandDoubleGoalCreateDto);
+            bool updateSuccessfull = await UpdateFreehandDoubleMatchScore(userId, freehandDoubleGoalCreateDto);
+
+            if (!updateSuccessfull)
+                throw new Exception("Could not update freehand double match");
 
             return fhg;
         }
 
-        private async void SubtractDoubleFreehandMatchScore(FreehandDoubleGoalModel freehandDoubleGoalModel)
+        private async Task<bool> SubtractDoubleFreehandMatchScore(FreehandDoubleGoalModel freehandDoubleGoalModel)
         {
+            bool result = false;
+            int updateStatement;
             var match = await GetFreehandDoubleMatchById(freehandDoubleGoalModel.DoubleMatchId);
 
             if (freehandDoubleGoalModel.ScoredByUserId == match.PlayerOneTeamA || freehandDoubleGoalModel.ScoredByUserId == match.PlayerTwoTeamA)
@@ -162,15 +193,20 @@ namespace FoosballApi.Services
                     UPDATE freehand_double_matches
                     SET team_a_score = @team_a_score, team_b_score = @team_b_score
                     WHERE id = @id";
-                await connection.ExecuteAsync(sql, new {
+                updateStatement = await connection.ExecuteAsync(sql, new {
                     team_a_score = match.TeamAScore,
                     team_b_score = match.TeamBScore,
                     id = match.Id
                 });
             }
+            
+            if (updateStatement > 0)
+                result = true;
+            
+            return result;
         }
 
-        public void DeleteFreehandGoal(FreehandDoubleGoalModel goalItem)
+        public async Task DeleteFreehandGoal(FreehandDoubleGoalModel goalItem)
         {
             using (var connection = new NpgsqlConnection(_connectionString))
             {
@@ -179,7 +215,10 @@ namespace FoosballApi.Services
                     WHERE id = @id";
                 connection.Execute(sql, new { id = goalItem.Id });
             }
-            SubtractDoubleFreehandMatchScore(goalItem);
+            bool updateSuccessfull = await SubtractDoubleFreehandMatchScore(goalItem);
+
+            if (!updateSuccessfull)
+                throw new Exception("Could not delete freehand double goal");
         }
 
         private async Task<List<FreehandDoubleGoalsJoinDto>> GetAllFreehandDoubleGoalsJoin(int matchId)
@@ -189,8 +228,9 @@ namespace FoosballApi.Services
             {
                 var goals = await conn.QueryAsync<FreehandDoubleGoalsJoinDto>(
                     @"SELECT DISTINCT fdg.Id as Id, scored_by_user_id as ScoredByUserId, fdg.double_match_id as DoubleMatchId, 
-                    fdg.scorer_team_score, fdg.opponent_team_score, fdg.winner_goal, fdg.time_of_goal as TimeOfGoal, 
-                    u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl
+                    fdg.scorer_team_score as ScorerTeamScore, fdg.opponent_team_score as OpponentTeamScore, fdg.winner_goal as WinnerGoal, 
+                    fdg.time_of_goal as TimeOfGoal, u.first_name as FirstName, u.last_name as LastName, 
+                    u.email as Email, u.photo_url as PhotoUrl
                     FROM freehand_double_goals fdg
                     JOIN freehand_double_matches fdm ON fdm.player_one_team_a = fdg.scored_by_user_id OR 
                     fdm.player_one_team_b = fdg.scored_by_user_id OR fdm.player_two_team_a = fdg.scored_by_user_id OR 

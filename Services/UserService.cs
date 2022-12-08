@@ -64,7 +64,7 @@ namespace FoosballApi.Services
                     u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
                     o.is_deleted as IsDeleted
                     FROM Users u
-                    JOIN organisation_list o ON o.user_id = u.id
+                    JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
                     WHERE u.id = @id",
                     new { id });
                 return user;
