@@ -536,3 +536,7 @@ ADD is_admin boolean
 
 alter table organisation_list
 add column "is_deleted" BOOLEAN DEFAULT FALSE
+
+ALTER TABLE users
+ADD refresh_token varchar,
+ADD refresh_token_expiry_time timestamp;

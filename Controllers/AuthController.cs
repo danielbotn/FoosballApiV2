@@ -38,6 +38,11 @@ namespace FoosballApi.Controllers
                     return BadRequest(new { message = "Username or password is incorrect" });
 
                 string tokenString = _authService.CreateToken(user);
+                string refreshToken = _authService.GenerateRefreshToken();
+                bool refreshTokenToDatabaseSuccessfull = await _authService.SaveRefreshTokenToDatabase(refreshToken, user.Id);
+
+                if (!refreshTokenToDatabaseSuccessfull)
+                    return StatusCode(500, "Error, could not save refresh token to database");
 
                 UserLogin userLogin = new UserLogin
                 {
@@ -45,7 +50,8 @@ namespace FoosballApi.Controllers
                     Email = user.Email,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
-                    Token = tokenString
+                    Token = tokenString,
+                    RefreshToken = refreshToken
                 };
 
                 return Ok(userLogin);
@@ -110,6 +116,43 @@ namespace FoosballApi.Controllers
             {
                 return StatusCode(500, e.Message);
             }
+        }
+
+        [HttpPost]
+        [Route("refresh")]
+        public async Task<IActionResult> Refresh(TokenApiModel tokenApiModel)
+        {
+            if (tokenApiModel is null)
+                return BadRequest("Invalid client request");
+            string accessToken = tokenApiModel.AccessToken;
+            string refreshToken = tokenApiModel.RefreshToken;
+            var principal = _authService.GetPrincipalFromExpiredToken(accessToken);
+            var username = principal.Identity.Name; //this is mapped to the Name claim by default
+            
+            var name = principal.FindFirst("name").Value;
+            var userId = int.Parse(name);
+            var user = await _userService.GetUserById(userId);
+            if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
+                return BadRequest("Invalid client request");
+            string tokenString = _authService.CreateToken(user);
+            var newRefreshToken = _authService.GenerateRefreshToken();
+            user.RefreshToken = newRefreshToken;
+
+
+            bool refreshTokenToDatabaseSuccessfull = await _authService.SaveRefreshTokenToDatabase(newRefreshToken, userId);
+
+            if (!refreshTokenToDatabaseSuccessfull)
+                    return StatusCode(500, "Error, could not save refresh token to database");
+            
+            return Ok(new UserLogin()
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Token = tokenString,
+                RefreshToken = newRefreshToken
+            });
         }
 
         // [HttpPost("forgot-password")]

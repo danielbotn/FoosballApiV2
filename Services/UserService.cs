@@ -62,6 +62,7 @@ namespace FoosballApi.Services
                 var user = await conn.QueryFirstOrDefaultAsync<User>(
                     @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
                     u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
+                    u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime,
                     o.is_deleted as IsDeleted
                     FROM Users u
                     JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id

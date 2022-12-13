@@ -24,6 +24,9 @@ namespace FoosballApi.Services
         VerificationModel AddVerificationInfo(User user, string origin);
         // void ResetPassword(ResetPasswordRequest model);
         string CreateToken(User user);
+        string GenerateRefreshToken();
+        Task<bool> SaveRefreshTokenToDatabase(string refreshToken, int userId);
+        ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
     }
 
     public class AuthService : IAuthService
@@ -273,5 +276,59 @@ namespace FoosballApi.Services
             return tokenString;
         }
 
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber);
+            }
+        }
+
+        public async Task<bool> SaveRefreshTokenToDatabase(string refreshToken, int userId)
+        {
+            bool result = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                int updateSuccessfull = await conn.ExecuteAsync(
+                    @"UPDATE users 
+                    SET refresh_token = @refresh_token, 
+                    refresh_token_expiry_time = @refresh_token_expiry_time
+                    WHERE id = @id",
+                    new { 
+                        refresh_token = refreshToken,
+                        refresh_token_expiry_time = DateTime.Now.AddDays(7),
+                        id = userId
+                     });
+                
+                if (updateSuccessfull > 0)
+                    result = true;
+            }
+
+            return result;
+        }
+
+        public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+        {
+            var key = Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("JWTSecret"));
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false, //you might want to validate the audience and issuer depending on your use case
+                ValidateIssuer = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ValidateLifetime = false,//here we are saying that we don't care about the token's expiration date
+            };
+            var tokenHandler = new JwtSecurityTokenHandler();
+            SecurityToken securityToken;
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
+            var jwtSecurityToken = securityToken as JwtSecurityToken;
+            if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                throw new SecurityTokenException("Invalid token");
+            return principal;
+        }
     }
 }
+
+// SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
