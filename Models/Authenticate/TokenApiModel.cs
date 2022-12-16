@@ -5,7 +5,7 @@ namespace FoosballApi.Models
     public class TokenApiModel
     {
         [Required]
-        public string AccessToken { get; set; }
+        public string Token { get; set; }
 
         [Required]
         public string RefreshToken { get; set; }

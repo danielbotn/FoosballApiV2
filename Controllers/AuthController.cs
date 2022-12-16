@@ -123,14 +123,14 @@ namespace FoosballApi.Controllers
         [ProducesResponseType(typeof(UserLogin), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Refresh(TokenApiModel tokenApiModel)
+        public async Task<IActionResult> Refresh([FromBody] TokenApiModel tokenApiModel)
         {
             try
             {
                 if (tokenApiModel is null)
                     return BadRequest("Invalid client request");
 
-                string accessToken = tokenApiModel.AccessToken;
+                string accessToken = tokenApiModel.Token;
                 string refreshToken = tokenApiModel.RefreshToken;
                 var principal = _authService.GetPrincipalFromExpiredToken(accessToken);
                 var username = principal.Identity.Name;
