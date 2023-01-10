@@ -24,6 +24,7 @@ namespace FoosballApi.Services
         IEnumerable<Match> GetPagnatedHistory(int userId, int pageNumber, int pageSize);
         IEnumerable<Match> OrderMatchesByDescending(IEnumerable<Match> lastTen);
         User GetUserByEmail(string email);
+        Task<User> CreateGroupUser(int userId, int currentOrganisationId, GroupUserCreate groupUser);
     }
 
     public class UserService : IUserService
@@ -2349,6 +2350,63 @@ namespace FoosballApi.Services
                     WHERE email = @email",
                     new { email });
                 return user;
+            }
+        }
+
+        private string GenerateRandomPhotoUrl()
+        {
+            string result = "";
+            Random rnd = new Random();
+            int randomNumber = rnd.Next(1, 99999);
+            result = "https://avatars.dicebear.com/api/personas/:" + randomNumber + ".png";
+            return result;
+        }
+
+        private async Task AddGroupUserToOrganisationList(int groupUserId, int organisationId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"INSERT INTO organisation_list (organisation_id, user_id, is_admin, is_deleted)
+                    VALUES (@organisation_id, @user_id, @is_admin, @is_deleted)",
+                    new { 
+                        organisation_id = organisationId,
+                        user_id = groupUserId, 
+                        is_admin = false,
+                        is_deleted = false
+                    });
+            }
+        }
+
+        public async Task<User> CreateGroupUser(int userId, int currentOrganisationId, GroupUserCreate groupUser)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+               int newGroupUser = await conn.ExecuteScalarAsync<int>(
+                    @"INSERT INTO users (email, password, first_name, last_name, created_at, current_organisation_id, photo_url) " +
+                    "VALUES (@Email, @Password, @FirstName, @LastName, @CreatedAt, @CurrentOrganisationId, @PhotoUrl) " + 
+                    "RETURNING id",
+                    new { 
+                        Email = "GROUP USER",
+                        Password = "GROUP-USER-PASSWORD",
+                        FirstName = groupUser.FirstName,
+                        LastName = groupUser.LastName,
+                        CreatedAt = DateTime.UtcNow,
+                        CurrentOrganisationId = currentOrganisationId,
+                        PhotoUrl = GenerateRandomPhotoUrl()
+                    });
+
+                string sql = @"SELECT id AS ID, email AS Email, first_name AS FirstName, last_name AS LastName,
+                               current_organisation_id AS CurrentOrganisationId, created_at, photo_url AS PhotoUrl
+                               FROM users
+                               WHERE id = @Id";
+                var parameters = new
+                {
+                    Id = newGroupUser
+                };
+                User insertedUser = await conn.QuerySingleAsync<User>(sql, parameters);
+                await AddGroupUserToOrganisationList(newGroupUser, currentOrganisationId);
+                return insertedUser;
             }
         }
     }

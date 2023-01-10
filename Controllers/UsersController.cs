@@ -3,6 +3,7 @@ using FoosballApi.Dtos.Users;
 using FoosballApi.Filter;
 using FoosballApi.Helpers;
 using FoosballApi.Models;
+using FoosballApi.Models.Users;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +31,7 @@ namespace FoosballApi.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<UserReadJoinDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetAllUsers()
         {
             try
@@ -47,6 +49,8 @@ namespace FoosballApi.Controllers
 
         [HttpGet("{id}", Name = "GetUserById")]
         [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserReadDto>> GetUserById(int id)
         {
             try
@@ -66,6 +70,9 @@ namespace FoosballApi.Controllers
 
         [HttpPatch("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> PartialUserUpdate(int id, JsonPatchDocument<UserUpdateDto> patchDoc)
         {
             try
@@ -100,6 +107,8 @@ namespace FoosballApi.Controllers
 
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> DeleteUser(int id)
         {
             try
@@ -126,6 +135,7 @@ namespace FoosballApi.Controllers
 
         [HttpGet("stats")]
         [ProducesResponseType(typeof(UserStatsReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetUserMatchesStats()
         {
             try
@@ -144,6 +154,7 @@ namespace FoosballApi.Controllers
 
         [HttpGet("stats/last-ten-matches")]
         [ProducesResponseType(typeof(IEnumerable<MatchReadDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<IEnumerable<MatchReadDto>> GetLastTenMatches()
         {
             try
@@ -162,6 +173,7 @@ namespace FoosballApi.Controllers
 
         [HttpGet("stats/history")]
         [ProducesResponseType(typeof(IEnumerable<Match>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<IEnumerable<Match>> History([FromQuery] PaginationFilter filter)
         {
             try
@@ -175,6 +187,26 @@ namespace FoosballApi.Controllers
                 return Ok(order);
             }
             catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost("group-user")]
+        [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> CreateGroupUser([FromBody] GroupUserCreate groupUser)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+                
+                var data = await _userService.CreateGroupUser(int.Parse(userId), int.Parse(currentOrganisationId), groupUser);
+
+                return Ok(_mapper.Map<UserReadDto>(data));
+            }
+            catch(Exception e)
             {
                 return StatusCode(500, e.Message);
             }
