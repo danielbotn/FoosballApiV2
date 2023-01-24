@@ -94,5 +94,11 @@ namespace FoosballApi.Models.Cms
         public string changeOrganisationAlertText { get; set; }
         public string deleteThisMatch { get; set; }
         public string deleteMatchAreYouSure { get; set; }
+        public string createGroupPlayer { get; set; }
+        public string groupPlayerInfoText { get; set; }
+        public string groupPlayerCreateFailure { get; set; }
+        public string groupPlayerCreateSuccess { get; set; }
+        public string firstName { get; set; }
+        public string lastName { get; set; }
     }
 }
