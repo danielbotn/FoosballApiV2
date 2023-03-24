@@ -32,9 +32,9 @@ namespace FoosballApi.Controllers
             _mapper = mapper;
         }
 
-        [HttpGet("organisation")]
-        [ProducesResponseType(typeof(List<LeagueReadDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<LeagueReadDto>>> GetLeaguesByOrganisation(int organisationId)
+        [HttpGet("organisation/{organisationId}")]
+        [ProducesResponseType(typeof(List<LeagueModel>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<LeagueModel>>> GetLeaguesByOrganisation(int organisationId)
         {
             try
             {
@@ -48,7 +48,7 @@ namespace FoosballApi.Controllers
                 if (leagues == null)
                     return NotFound();
 
-                return Ok(_mapper.Map<IEnumerable<LeagueReadDto>>(leagues));
+                return Ok(leagues);
             }
             catch (Exception e)
             {

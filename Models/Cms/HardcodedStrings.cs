@@ -100,5 +100,9 @@ namespace FoosballApi.Models.Cms
         public string groupPlayerCreateSuccess { get; set; }
         public string firstName { get; set; }
         public string lastName { get; set; }
+        public string league { get; set; } 
+        public string createNewLeague { get; set; } 
+        public string createLeague { get; set; } 
+        public string leagueName { get; set; }
     }
 }

@@ -1,13 +1,9 @@
-using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Dapper;
-using FoosballApi.Helpers;
 using FoosballApi.Models;
-using FoosballApi.Models.Accounts;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 
