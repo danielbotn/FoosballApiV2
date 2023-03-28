@@ -139,7 +139,7 @@ namespace FoosballApi.Controllers
                 var userId = int.Parse(name);
                 var user = await _userService.GetUserById(userId);
                 if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
-                    return BadRequest("Invalid client request");
+                    return BadRequest("Invalid client request from refresh endpoint");
 
                 string tokenString = _authService.CreateToken(user);
                 string newRefreshToken = _authService.GenerateRefreshToken();
