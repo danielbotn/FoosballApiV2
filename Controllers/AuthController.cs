@@ -35,7 +35,7 @@ namespace FoosballApi.Controllers
                 var user = await _authService.Authenticate(model.Username, model.Password);
 
                 if (user == null)
-                    return BadRequest(new { message = "Username or password is incorrect" });
+                    return StatusCode(401, "Username or password is incorrect");
 
                 string tokenString = _authService.CreateToken(user);
                 string refreshToken = _authService.GenerateRefreshToken();
@@ -118,6 +118,7 @@ namespace FoosballApi.Controllers
             }
         }
 
+        // used for mobile refresh only
         [HttpPost]
         [Route("refresh")]
         [ProducesResponseType(typeof(UserLogin), StatusCodes.Status200OK)]
@@ -139,7 +140,23 @@ namespace FoosballApi.Controllers
                 var userId = int.Parse(name);
                 var user = await _userService.GetUserById(userId);
                 if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
-                    return BadRequest("Invalid client request from refresh endpoint");
+                {
+                    if (user.RefreshToken != refreshToken)
+                    {
+                        // check if old refresh token is in database
+                        var isRTokenInDatabase = await _authService.IsOldRefreshTokenInDatabase(user, refreshToken);
+                        if (isRTokenInDatabase.Item1 == false)
+                        {
+                            return BadRequest("Invalid client request from refresh endpoint");
+                        }
+                        else
+                        {
+                            if (isRTokenInDatabase.Item2 != 0)
+                                await _authService.DeleteOldRefreshTokenById(isRTokenInDatabase.Item2);
+                        }
+                    }
+                    
+                }
 
                 string tokenString = _authService.CreateToken(user);
                 string newRefreshToken = _authService.GenerateRefreshToken();

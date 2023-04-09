@@ -540,3 +540,15 @@ add column "is_deleted" BOOLEAN DEFAULT FALSE
 ALTER TABLE users
 ADD refresh_token varchar,
 ADD refresh_token_expiry_time timestamp;
+
+ALTER TABLE users
+ADD refresh_token_web varchar,
+ADD refresh_token_web_expiry_time timestamp;
+
+CREATE TABLE old_refresh_tokens (
+id SERIAL PRIMARY KEY,
+refresh_token CHARACTER VARYING NOT NULL,
+refresh_token_expiry_time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+fk_user_id INTEGER REFERENCES users(id),
+fk_organisation_id INTEGER REFERENCES organisations(id)
+);

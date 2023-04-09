@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Dapper;
 using FoosballApi.Models;
+using FoosballApi.Models.OldRefreshTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 
@@ -23,6 +24,8 @@ namespace FoosballApi.Services
         string GenerateRefreshToken();
         Task<bool> SaveRefreshTokenToDatabase(string refreshToken, int userId);
         ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
+        Task<(bool, int)> IsOldRefreshTokenInDatabase(User user, string refreshToken);
+        Task DeleteOldRefreshTokenById(int id);
     }
 
     public class AuthService : IAuthService
@@ -282,9 +285,44 @@ namespace FoosballApi.Services
             }
         }
 
+        private async Task SaveOldRefreshTokenToDatabase(string refreshToken, DateTime expirationTime, User user)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                     @"INSERT INTO old_refresh_tokens (refresh_token, refresh_token_expiry_time, fk_user_id, fk_organisation_id)
+                            VALUES (@refresh_token, @refresh_token_expiry_time, @fk_user_id, @fk_organisation_id)",
+                            new { 
+                                refresh_token = user.RefreshToken, 
+                                refresh_token_expiry_time = user.RefreshTokenExpiryTime, 
+                                fk_user_id = user.Id, 
+                                fk_organisation_id = user.CurrentOrganisationId });
+            }
+        }
+
+
+        private async Task<User> GetUserById(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var user = await conn.QueryFirstOrDefaultAsync<User>(
+                    @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
+                    u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime,
+                    o.is_deleted as IsDeleted
+                    FROM Users u
+                    JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
+                    WHERE u.id = @id",
+                    new { id });
+                return user;
+            }
+        }
+
         public async Task<bool> SaveRefreshTokenToDatabase(string refreshToken, int userId)
         {
             bool result = false;
+            var user = await GetUserById(userId);
+            await SaveOldRefreshTokenToDatabase(user.RefreshToken, user.RefreshTokenExpiryTime, user);
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 int updateSuccessfull = await conn.ExecuteAsync(
@@ -324,7 +362,40 @@ namespace FoosballApi.Services
                 throw new SecurityTokenException("Invalid token");
             return principal;
         }
+
+        public async Task<(bool, int)> IsOldRefreshTokenInDatabase(User user, string refreshToken)
+        {
+            bool result = false;
+            int id = 0;
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var oldRefreshTokens = await conn.QueryFirstOrDefaultAsync<OldRefreshToken>(
+                    @"SELECT id, refresh_token AS RefreshToken, refresh_token_expiry_time as RefreshTokenExpiryTime,
+                    fk_user_id AS UserId, fk_organisation_id AS OrganisationId
+                    FROM old_refresh_tokens
+                    WHERE fk_user_id = @fk_user_id AND fk_organisation_id = @fk_organisation_id AND refresh_token = @refresh_token",
+                    new { fk_user_id = user.Id, fk_organisation_id = user.CurrentOrganisationId, refresh_token = refreshToken });
+
+                if (oldRefreshTokens != null && oldRefreshTokens.RefreshToken == refreshToken && oldRefreshTokens.RefreshTokenExpiryTime <= DateTime.Now)
+                {
+                    result = true;
+                    id = oldRefreshTokens.Id;
+                }
+            }
+
+            return (result, id);
+        }
+
+
+        public async Task DeleteOldRefreshTokenById(int id)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"DELETE FROM old_refresh_tokens WHERE id = @id",
+                    new { id = id });
+            }
+        }
     }
 }
-
-// SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

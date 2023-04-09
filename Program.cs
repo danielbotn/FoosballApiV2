@@ -59,7 +59,8 @@ builder.Services.AddAuthentication(x =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = false,
-        ValidateAudience = false
+        ValidateAudience = false,
+        // ClockSkew = TimeSpan.Zero // for debugging only to remove 5 min default time
     };
 });
 builder.Services.AddControllers().AddNewtonsoftJson(s =>
