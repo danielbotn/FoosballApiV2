@@ -18,7 +18,8 @@ namespace FoosballApi.Controllers
         }
 
         [HttpPost("hardcoded-strings")]
-        [ProducesResponseType(typeof(HardcodedStrings), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(HardcodedStrings), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
         public async Task<IActionResult> GetHardcodedStrings(string language)
         {
             try 

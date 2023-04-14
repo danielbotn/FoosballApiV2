@@ -84,6 +84,7 @@ builder.Services.AddScoped<ILeagueService, LeagueService>();
 builder.Services.AddScoped<ISingleLeagueMatchService, SingleLeagueMatchService>();
 builder.Services.AddScoped<IOrganisationService, OrganisationService>();
 builder.Services.AddScoped<ISingleLeagueGoalService, SingleLeagueGoalService>();
+builder.Services.AddScoped<ISingleLeaguePlayersService, SingleLeaguePlayersService>();
 
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

@@ -26,6 +26,7 @@ namespace FoosballApi.Services
         ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
         Task<(bool, int)> IsOldRefreshTokenInDatabase(User user, string refreshToken);
         Task DeleteOldRefreshTokenById(int id);
+        Task DeleteOldTokens(int organisationId);
     }
 
     public class AuthService : IAuthService
@@ -290,13 +291,14 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 await conn.ExecuteAsync(
-                     @"INSERT INTO old_refresh_tokens (refresh_token, refresh_token_expiry_time, fk_user_id, fk_organisation_id)
-                            VALUES (@refresh_token, @refresh_token_expiry_time, @fk_user_id, @fk_organisation_id)",
+                     @"INSERT INTO old_refresh_tokens (refresh_token, refresh_token_expiry_time, fk_user_id, fk_organisation_id, inserted_at)
+                            VALUES (@refresh_token, @refresh_token_expiry_time, @fk_user_id, @fk_organisation_id, @inserted_at)",
                             new { 
                                 refresh_token = user.RefreshToken, 
                                 refresh_token_expiry_time = user.RefreshTokenExpiryTime, 
                                 fk_user_id = user.Id, 
-                                fk_organisation_id = user.CurrentOrganisationId });
+                                fk_organisation_id = user.CurrentOrganisationId,
+                                inserted_at = DateTime.Now });
             }
         }
 
@@ -395,6 +397,18 @@ namespace FoosballApi.Services
                 await conn.ExecuteAsync(
                     @"DELETE FROM old_refresh_tokens WHERE id = @id",
                     new { id = id });
+            }
+        }
+
+        public async Task DeleteOldTokens(int organisationId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var expiryTime = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds(); // calculate the expiry time as 24 hours ago in UTC time
+                await conn.ExecuteAsync(
+                    @"DELETE FROM old_refresh_tokens 
+                    WHERE fk_organisation_id = @fk_organisation_id AND refresh_token_expiry_time < to_timestamp(@expiry_time)",
+                    new { fk_organisation_id = organisationId, expiry_time = expiryTime });
             }
         }
     }

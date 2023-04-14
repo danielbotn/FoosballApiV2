@@ -36,12 +36,12 @@ namespace FoosballApi.Services
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var goals = await conn.QueryAsync<OrganisationListModel>(
+                var data = await conn.QueryAsync<OrganisationListModel>(
                     @"SELECT id as Id, organisation_id as OrganisationId, user_id as UserId
                     FROM organisation_list
                     WHERE user_id = @user_id AND organisation_id = @organisation_id",
                 new { user_id = userId, organisation_id = organisationId });
-                return goals.ToList();
+                return data.ToList();
             }
         }
 

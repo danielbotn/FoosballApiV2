@@ -149,14 +149,10 @@ namespace FoosballApi.Controllers
                         {
                             return BadRequest("Invalid client request from refresh endpoint");
                         }
-                        else
-                        {
-                            if (isRTokenInDatabase.Item2 != 0)
-                                await _authService.DeleteOldRefreshTokenById(isRTokenInDatabase.Item2);
-                        }
                     }
                     
                 }
+                await _authService.DeleteOldTokens((int)user.CurrentOrganisationId);
 
                 string tokenString = _authService.CreateToken(user);
                 string newRefreshToken = _authService.GenerateRefreshToken();

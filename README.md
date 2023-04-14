@@ -552,3 +552,6 @@ refresh_token_expiry_time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
 fk_user_id INTEGER REFERENCES users(id),
 fk_organisation_id INTEGER REFERENCES organisations(id)
 );
+
+ALTER TABLE old_refresh_tokens
+ADD inserted_at timestamp
