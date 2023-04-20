@@ -104,5 +104,8 @@ namespace FoosballApi.Models.Cms
         public string createNewLeague { get; set; } 
         public string createLeague { get; set; } 
         public string leagueName { get; set; }
+        public string standings { get; set; }
+        public string fixtures { get; set; }
+        public string notStarted { get; set; }
     }
 }

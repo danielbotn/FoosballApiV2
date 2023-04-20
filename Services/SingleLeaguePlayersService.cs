@@ -8,6 +8,7 @@ namespace FoosballApi.Services
     {
         Task AddSingleLeaguePlayers(List<UserReadDto> users, int leagueId);
         Task StartLeague(int leagueId);
+        Task<bool> HasPlayerAccessToLeague(int userId, int leagueId);
     }
 
     public class SingleLeaguePlayersService : ISingleLeaguePlayersService
@@ -58,6 +59,29 @@ namespace FoosballApi.Services
                 await conn.ExecuteAsync(
                     @"UPDATE leagues SET has_league_started = @has_league_started WHERE id = @id",
                     new { has_league_started = true, id = leagueId });
+            }
+        }
+
+        public async Task<bool> HasPlayerAccessToLeague(int userId, int leagueId)
+        {
+            bool result = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var userID = await conn.QueryFirstOrDefaultAsync<int?>(
+                    @"SELECT user_id AS UserId
+                    FROM league_players WHERE league_id = @league_id AND user_id = @user_id",
+                    new { league_id = leagueId, user_id = userId });
+
+                if (userID == null) {
+                    result = false;
+                }
+                else
+                {
+                    result = true;
+                } 
+               
+                
+                return result;
             }
         }
     }

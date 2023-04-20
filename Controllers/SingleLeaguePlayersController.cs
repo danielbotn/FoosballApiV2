@@ -45,5 +45,31 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
+
+        [HttpGet("players/{leagueId}", Name = "GetPlayersByLeagueById")]
+        [ProducesResponseType(typeof(List<UserReadDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<List<UserReadDto>>> GetPlayersByLeagueId(int leagueId)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                bool hasAccess = await _singleLeaguePlayersService.HasPlayerAccessToLeague(int.Parse(userId), leagueId);
+
+                if (!hasAccess)
+                    return Forbid();
+
+                // check if player has access to league correctly
+
+                return Ok();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
     }
 }

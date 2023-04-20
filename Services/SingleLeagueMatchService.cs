@@ -11,7 +11,7 @@ namespace FoosballApi.Services
     {
         Task<bool> CheckLeaguePermission(int leagueId, int userId);
         Task<IEnumerable<SingleLeagueStandingsQuery>> GetSigleLeagueStandings(int leagueId);
-        Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByOrganisationId(int organisationId, int leagueId);
+        Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByLeagueId(int leagueId);
         Task<bool> CheckMatchPermission(int matchId, int userId);
         Task<SingleLeagueMatchModelExtended> GetSingleLeagueMatchByIdExtended(int matchId);
         Task<SingleLeagueMatchModel> GetSingleLeagueMatchById(int matchId);
@@ -81,57 +81,57 @@ namespace FoosballApi.Services
             return userIds;
         }
 
-        private async Task<List<SingleLeagueMatchModel>> GetMatchesWonAsPlayerOne(int userId)
+        private async Task<List<SingleLeagueMatchModel>> GetMatchesWonAsPlayerOne(int userId, int leagueId)
         {
              using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var matches = await conn.QueryAsync<SingleLeagueMatchModel>(
                     @"SELECT id as Id
                     FROM single_league_matches
-                    WHERE player_one = @player_one AND match_ended = true AND player_one_score > player_two_score",
-                new { player_one = userId });
+                    WHERE player_one = @player_one AND match_ended = true AND player_one_score > player_two_score AND league_id = @league_id",
+                new { player_one = userId, league_id = leagueId });
                 
                 return matches.ToList();
             }
         }
 
-        private async Task<List<SingleLeagueMatchModel>> GetMatchesWonAsPlayerTwo(int userId)
+        private async Task<List<SingleLeagueMatchModel>> GetMatchesWonAsPlayerTwo(int userId, int leagueId)
         {
              using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var matches = await conn.QueryAsync<SingleLeagueMatchModel>(
                     @"SELECT id as Id
                     FROM single_league_matches
-                    WHERE player_two = @player_two AND match_ended = true AND player_two_score > player_one_score",
-                new { player_two = userId });
+                    WHERE player_two = @player_two AND match_ended = true AND player_two_score > player_one_score AND league_id = @league_id",
+                new { player_two = userId, league_id = leagueId });
                 
                 return matches.ToList();
             }
         }
 
-        private async Task<List<SingleLeagueMatchModel>> GetMatchesLostAsPlayerOne(int userId)
+        private async Task<List<SingleLeagueMatchModel>> GetMatchesLostAsPlayerOne(int userId, int leagueId)
         {
              using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var matches = await conn.QueryAsync<SingleLeagueMatchModel>(
                     @"SELECT id as Id
                     FROM single_league_matches
-                    WHERE player_one = @player_one AND match_ended = true AND player_one_score < player_two_score",
-                new { player_one = userId });
+                    WHERE player_one = @player_one AND match_ended = true AND player_one_score < player_two_score AND league_id = @league_id",
+                new { player_one = userId, league_id = leagueId});
                 
                 return matches.ToList();
             }
         }
 
-        private async Task<List<SingleLeagueMatchModel>> GetMatchesLostAsPlayerTwo(int userId)
+        private async Task<List<SingleLeagueMatchModel>> GetMatchesLostAsPlayerTwo(int userId, int leagueId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var matches = await conn.QueryAsync<SingleLeagueMatchModel>(
                     @"SELECT id as Id
                     FROM single_league_matches
-                    WHERE player_two = @player_two AND match_ended = true AND player_two_score < player_one_score",
-                new { player_two = userId });
+                    WHERE player_two = @player_two AND match_ended = true AND player_two_score < player_one_score AND league_id = @league_id",
+                new { player_two = userId, league_id = leagueId });
                 
                 return matches.ToList();
             }
@@ -212,11 +212,11 @@ namespace FoosballApi.Services
 
             foreach (int userId in userIds)
             {
-                var matchesWonAsPlayerOne = await GetMatchesWonAsPlayerOne(userId);
-                var matchesWonAsPlayerTwo = await GetMatchesWonAsPlayerTwo(userId);
+                var matchesWonAsPlayerOne = await GetMatchesWonAsPlayerOne(userId, leagueId);
+                var matchesWonAsPlayerTwo = await GetMatchesWonAsPlayerTwo(userId, leagueId);
 
-                var matchesLostAsPlayerOne = await GetMatchesLostAsPlayerOne(userId);
-                var matchesLostAsPlayerTwo = await GetMatchesLostAsPlayerTwo(userId);
+                var matchesLostAsPlayerOne = await GetMatchesLostAsPlayerOne(userId, leagueId);
+                var matchesLostAsPlayerTwo = await GetMatchesLostAsPlayerTwo(userId, leagueId);
 
                 User userInfo = await GetUserInfo(userId);
 
@@ -247,7 +247,7 @@ namespace FoosballApi.Services
             return sortedLeagueWithPositions;
         }
 
-        public async Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByOrganisationId(int organisationId, int leagueId)
+        public async Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByLeagueId(int leagueId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
@@ -260,7 +260,9 @@ namespace FoosballApi.Services
                     (SELECT u.first_name from Users u where u.id = slm.player_one) as PlayerOneFirstName,
                     (SELECT u2.last_name from Users u2 where u2.id = slm.player_one) as PlayerOneLastName,
                     (SELECT u3.first_name from Users u3 where u3.id = slm.player_two) as PlayerTwoFirstName,
-                    (SELECT u4.last_name from Users u4 where u4.id = slm.player_two) as PlayerTwoLastName
+                    (SELECT u4.last_name from Users u4 where u4.id = slm.player_two) as PlayerTwoLastName,
+                    (SELECT u5.photo_url from Users u5 where u5.id = slm.player_one) as PlayerOnePhotoUrl,
+                    (SELECT u6.photo_url from Users u6 where u6.id = slm.player_two) as PlayerTwoPhotoUrl
                     FROM single_league_matches slm
                     JOIN leagues l on l.id = slm.league_id
                     where league_id = @league_id",

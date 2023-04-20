@@ -32,5 +32,7 @@ namespace FoosballApi.Models.Other
 
         public string PlayerTwoFirstName { get; set; }
         public string PlayerTwoLastName { get; set; }
+        public string PlayerOnePhotoUrl { get; set; }
+        public string PlayerTwoPhotoUrl { get; set; }
     }
 }
