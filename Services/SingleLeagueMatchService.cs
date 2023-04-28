@@ -396,7 +396,8 @@ namespace FoosballApi.Services
                     player_two_score = match.PlayerTwoScore,
                     match_started = match.MatchStarted,
                     match_ended = match.MatchEnded,
-                    match_paused = match.MatchPaused
+                    match_paused = match.MatchPaused,
+                    id = match.Id
                 });
             }
         }

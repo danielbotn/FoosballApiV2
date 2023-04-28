@@ -483,14 +483,14 @@ namespace FoosballApi.Services
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var count = await conn.QueryFirstOrDefaultAsync<int>(
+                var count = await conn.QueryFirstOrDefaultAsync<int?>(
                     @"
                     SELECT SUM(dlm.team_one_score)
                     FROM double_league_matches dlm
                     JOIN double_league_players dlp on dlm.team_one_id = dlp.double_league_team_id
                     WHERE dlp.user_id = @userId",
                     new { userId });
-                return count;
+                return count ?? 0;
             }
         }
 
@@ -518,14 +518,14 @@ namespace FoosballApi.Services
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var count = await conn.QueryFirstOrDefaultAsync<int>(
+                var count = await conn.QueryFirstOrDefaultAsync<int?>(
                     @"
                     SELECT SUM(dlm.team_two_score)
                     FROM double_league_matches dlm
                     JOIN double_league_players dlp on dlm.team_one_id = dlp.double_league_team_id
                     WHERE dlp.user_id = @userId",
                     new { userId });
-                return count;
+                return count ?? 0;
             }
         }
 
