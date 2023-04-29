@@ -23,5 +23,11 @@ namespace FoosballApi.Dtos.Leagues
 
         [Required]
         public int OrganisationId { get; set; }
+
+        [Required]
+        public bool HasLeagueStarted { get; set; }
+        
+        [Required]
+        public int? HowManyRounds { get; set; }
     }
 }

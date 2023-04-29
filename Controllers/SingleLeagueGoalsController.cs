@@ -72,7 +72,7 @@ namespace FoosballApi.Controllers
         }
 
         [HttpPost("")]
-        [ProducesResponseType(typeof(SingleLeagueGoalReadDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(SingleLeagueGoalModel), StatusCodes.Status201Created)]
         public async Task<ActionResult> CreateSingleLeagueGoal([FromBody] SingleLeagueCreateModel singleLeagueCreateModel)
         {
             try
@@ -86,11 +86,7 @@ namespace FoosballApi.Controllers
 
                 SingleLeagueGoalModel newGoal = await _singleLeagueGoalService.CreateSingleLeagueGoal(singleLeagueCreateModel);
 
-                SingleLeagueGoalReadDto singleLeagueGoalReadDto = _mapper.Map<SingleLeagueGoalReadDto>(singleLeagueCreateModel);
-                singleLeagueGoalReadDto.Id = newGoal.Id;
-                singleLeagueGoalReadDto.TimeOfGoal = newGoal.TimeOfGoal;
-
-                return CreatedAtRoute("getSingleLeagueById", new { goalId = newGoal.Id }, singleLeagueGoalReadDto);
+                return CreatedAtRoute("getSingleLeagueById", new { goalId = newGoal.Id }, newGoal);
             }
             catch (Exception e)
             {
