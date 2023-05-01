@@ -1103,8 +1103,8 @@ namespace FoosballApi.Services
                 playerTwoScore = (int)item.PlayerTwoScore;
                 Match match = new Match
                 {
-                    TypeOfMatch = ETypeOfMatch.FreehandMatch,
-                    TypeOfMatchName = ETypeOfMatch.FreehandMatch.ToString(),
+                    TypeOfMatch = ETypeOfMatch.SingleLeagueMatch,
+                    TypeOfMatchName = ETypeOfMatch.SingleLeagueMatch.ToString(),
                     UserId = userId,
                     TeamMateId = null,
                     MatchId = item.Id,
@@ -1116,7 +1116,8 @@ namespace FoosballApi.Services
                     OpponentTwoLastName = null,
                     UserScore = playerOne == userId ? playerOneScore : playerTwoScore,
                     OpponentUserOrTeamScore = playerOne == userId ? playerTwoScore : playerOneScore,
-                    DateOfGame = (DateTime)item.EndTime
+                    DateOfGame = (DateTime)item.EndTime,
+                    LeagueId = item.LeagueId
                 };
                 result.Add(match);
             }
