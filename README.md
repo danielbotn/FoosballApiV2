@@ -403,6 +403,17 @@ EXECUTE PROCEDURE add_double_league_goal();
 
 ```
 
+Delete add_single_league_goals trigger
+
+DROP TRIGGER IF EXISTS add_single_league_goal ON single_league_goals;
+DROP FUNCTION IF EXISTS add_single_league_goal() CASCADE;
+
+DROP TRIGGER IF EXISTS end_single_league_match ON single_league_matches;
+DROP FUNCTION IF EXISTS end_single_league_match() CASCADE;
+
+DROP TRIGGER IF EXISTS start_single_league_match ON single_league_matches;
+DROP FUNCTION IF EXISTS start_single_league_match() CASCADE;
+
 ## Thanks
 
 **Foosball** © 2021+, Mossfellsbær City. Released under the [MIT License].<br>

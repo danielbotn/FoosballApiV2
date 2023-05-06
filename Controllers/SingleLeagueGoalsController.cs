@@ -86,6 +86,8 @@ namespace FoosballApi.Controllers
 
                 SingleLeagueGoalModel newGoal = await _singleLeagueGoalService.CreateSingleLeagueGoal(singleLeagueCreateModel);
 
+                await _singleLeagueGoalService.UpdateSingleLeagueMatch(newGoal);
+
                 return CreatedAtRoute("getSingleLeagueById", new { goalId = newGoal.Id }, newGoal);
             }
             catch (Exception e)

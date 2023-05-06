@@ -14,6 +14,7 @@ namespace FoosballApi.Services
         Task<SingleLeagueGoalModelExtended> GetSingleLeagueGoalById(int goaldId);
         void DeleteSingleLeagueGoal(SingleLeagueGoalModelExtended singleLeagueGoalModel);
         Task<SingleLeagueGoalModel> CreateSingleLeagueGoal(SingleLeagueCreateModel singleLeagueCreateMode);
+        Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal);
     }
 
     public class SingleLeagueGoalService : ISingleLeagueGoalService
@@ -132,7 +133,7 @@ namespace FoosballApi.Services
 
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var data = await conn.QueryFirstOrDefaultAsync<FreehandMatchModel>(
+                var data = await conn.QueryFirstOrDefaultAsync<int>(
                     @"INSERT INTO single_league_goals (time_of_goal, match_id, scored_by_user_id, 
                     opponent_id, scorer_score, opponent_score, winner_goal)
                     VALUES (@time_of_goal, @match_id, @scored_by_user_id, @opponent_id, @scorer_score, @opponent_score, @winner_goal)
@@ -147,7 +148,7 @@ namespace FoosballApi.Services
                         opponent_score = singleLeagueCreateMode.OpponentScore, 
                         winner_goal = singleLeagueCreateMode.WinnerGoal
                     });
-                newGoal.Id = data.Id;
+                newGoal.Id = data;
             }
 
             return newGoal;
@@ -165,6 +166,88 @@ namespace FoosballApi.Services
                 conn.Execute(
                     "DELETE FROM single_league_goals WHERE id = @id",
                     new { id = singleLeagueGoalModel.Id });
+            }
+        }
+
+        public async Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal)
+        {
+            SingleLeagueMatchModel match = await GetSingleLeagueMatchById(goal.MatchId);
+
+            int playerOneScore = GetPlayerOneScore(goal, match);
+            int playerTwoScore = GetPlayerTwoScore(goal, match);
+
+            bool matchEnded = GetMatchEnded(goal);
+
+            DateTime? startTime = GetStartTime(match);
+            DateTime? endTime = GetEndTime(goal, match);
+
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.ExecuteAsync(
+                    @"UPDATE single_league_matches 
+                    SET player_one_score = @player_one_score, 
+                    player_two_score = @player_two_score,
+                    match_ended = @match_ended,
+                    start_time = @start_time,
+                    end_time = @end_time
+                    WHERE id = @id",
+                    new { 
+                        player_one_score = playerOneScore,
+                        player_two_score = playerTwoScore,
+                        match_ended = matchEnded,
+                        start_time = startTime,
+                        end_time = endTime,
+                        id = goal.MatchId
+                    });
+            }
+        }
+
+        private int GetPlayerOneScore(SingleLeagueGoalModel goal, SingleLeagueMatchModel match)
+        {
+            if (goal.ScoredByUserId == match.PlayerOne) {
+                return goal.ScorerScore;
+            }
+            else {
+                return goal.OpponentScore;
+            }
+        }
+
+        private int GetPlayerTwoScore(SingleLeagueGoalModel goal, SingleLeagueMatchModel match)
+        {
+            if (goal.ScoredByUserId == match.PlayerOne) {
+                return goal.OpponentScore;
+            }
+            else {
+                return goal.ScorerScore;
+            }
+        }
+
+        private bool GetMatchEnded(SingleLeagueGoalModel goal)
+        {
+            return goal.WinnerGoal == true;
+        }
+
+        private DateTime? GetStartTime(SingleLeagueMatchModel match)
+        {
+            if (match.StartTime == null)
+            {
+                return DateTime.Now;
+            }
+            else 
+            {
+                return match.StartTime;
+            }
+        }
+
+        private DateTime? GetEndTime(SingleLeagueGoalModel goal, SingleLeagueMatchModel match)
+        {
+            if (goal.WinnerGoal == true)
+            {
+                return DateTime.Now;
+            }
+            else 
+            {
+                return match.EndTime;
             }
         }
 
