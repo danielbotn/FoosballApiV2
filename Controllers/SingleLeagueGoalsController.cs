@@ -115,6 +115,8 @@ namespace FoosballApi.Controllers
 
                 _singleLeagueGoalService.DeleteSingleLeagueGoal(goalItem);
 
+                await _singleLeagueGoalService.UpdateSingleLeagueMatchAfterDeletedGoal(goalItem);
+
                 return NoContent();
             }
             catch (Exception e)

@@ -15,6 +15,7 @@ namespace FoosballApi.Services
         void DeleteSingleLeagueGoal(SingleLeagueGoalModelExtended singleLeagueGoalModel);
         Task<SingleLeagueGoalModel> CreateSingleLeagueGoal(SingleLeagueCreateModel singleLeagueCreateMode);
         Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal);
+        Task UpdateSingleLeagueMatchAfterDeletedGoal(SingleLeagueGoalModelExtended singleLeagueGoalModel);
     }
 
     public class SingleLeagueGoalService : ISingleLeagueGoalService
@@ -166,6 +167,43 @@ namespace FoosballApi.Services
                 conn.Execute(
                     "DELETE FROM single_league_goals WHERE id = @id",
                     new { id = singleLeagueGoalModel.Id });
+            }
+        }
+
+        public async Task UpdateSingleLeagueMatchAfterDeletedGoal(SingleLeagueGoalModelExtended deletedGoal)
+        {
+            SingleLeagueMatchModel match = await GetSingleLeagueMatchById(deletedGoal.MatchId);
+            
+            if (deletedGoal.ScoredByUserId == match.PlayerOne && match.PlayerOneScore > 0) 
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    await conn.ExecuteAsync(
+                        @"UPDATE single_league_matches
+                        SET player_one_score = @player_one_score
+                        WHERE id = @id",
+                        new 
+                        {   player_one_score = match.PlayerOneScore - 1, 
+                            id = deletedGoal.MatchId
+                        });
+                }
+            }
+            else
+            {
+                if (match.PlayerTwoScore > 0) 
+                {
+                    using (var conn = new NpgsqlConnection(_connectionString))
+                    {
+                        await conn.ExecuteAsync(
+                            @"UPDATE single_league_matches
+                            SET player_two_score = @player_two_score
+                            WHERE id = @id",
+                            new 
+                            {   player_two_score = match.PlayerTwoScore - 1, 
+                                id = deletedGoal.MatchId
+                            });
+                    }
+                }
             }
         }
 
