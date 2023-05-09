@@ -1879,12 +1879,14 @@ namespace FoosballApi.Services
             {
                 var singleLeagueMatches = conn.Query<SingleLeagueMatchModel>(
                     @"
-                    SELECT *
+                    SELECT id AS Id, player_one as PlayerOne, player_two AS PlayerTwo, league_id AS LeagueId,
+                    start_time AS StartTime, end_time AS EndTime, player_one_score AS PlayerOneScore,
+                    player_two_score AS PlayerTwoScore, match_started AS MatchStarted,
+                    match_ended AS MatchEnded, match_paused AS MatchPaused
                     FROM single_league_matches
-                    WHERE (player_one = @userId OR player_two = @userId) AND match_ended != null AND match_ended != false
+                    WHERE (player_one = @userId OR player_two = @userId) AND match_ended != false
                     ORDER BY id DESC
-                    LIMIT @pageSize
-                    OFFSET @pageNumber",
+                    OFFSET @pageNumber ROWS FETCH NEXT @pageSize ROWS ONLY",
                     new { userId, pageNumber, pageSize });
                 result = singleLeagueMatches.ToList();
             }
