@@ -61,7 +61,7 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var leagues = await conn.QueryAsync<LeagueModel>(
-                    @"SELECT id as Id, name as Name, type_of_league as LeagueType,
+                    @"SELECT id as Id, name as Name, type_of_league as TypeOfLeague,
                     created_at as CreatedAt, up_to as UpTo, organisation_id as OrganisationId,
                     has_league_started as HasLeagueStarted, how_many_rounds as HowManyRounds
                     FROM leagues
@@ -89,7 +89,7 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var query = await conn.QueryAsync<LeagueModel>(
-                    @"SELECT id as Id, name as Name, type_of_league as LeagueType,
+                    @"SELECT id as Id, name as Name, type_of_league as TypeOfLeague,
                     created_at as CreatedAt, up_to as UpTo, organisation_id as OrganisationId,
                     has_league_started as HasLeagueStarted, how_many_rounds as HowManyRounds
                     FROM leagues
@@ -156,7 +156,7 @@ namespace FoosballApi.Services
                 conn.Open();
             }
 
-            conn.TypeMapper.MapEnum<LeagueType>("league_type");
+            conn.TypeMapper.MapEnum<TypeOfLeague>("league_type");
 
             using (var cmd = new NpgsqlCommand(@"
                 INSERT INTO leagues (name, type_of_league, created_at, up_to, organisation_id, has_league_started, how_many_rounds) 

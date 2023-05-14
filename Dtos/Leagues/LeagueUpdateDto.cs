@@ -7,7 +7,7 @@ namespace FoosballApi.Dtos.Leagues
 
         public string Name { get; set; }
 
-        public LeagueType TypeOfLeague { get; set; }
+        public TypeOfLeague TypeOfLeague { get; set; }
 
         public int UpTo { get; set; }
 

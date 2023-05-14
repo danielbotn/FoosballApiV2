@@ -1,8 +1,8 @@
 namespace FoosballApi.Models.Leagues
 {
-    public enum LeagueType 
+    public enum TypeOfLeague 
     {
-        SingleLeague,
-        DoubleLeague,
+        single_league,
+        double_league,
     }
 }

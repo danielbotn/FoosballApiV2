@@ -13,7 +13,7 @@ namespace FoosballApi.Dtos.Leagues
         public string Name { get; set; }
 
         [Required]
-        public LeagueType TypeOfLeague { get; set; }
+        public TypeOfLeague TypeOfLeague { get; set; }
 
         [Required]
         public DateTime CreatedAt { get; set; }

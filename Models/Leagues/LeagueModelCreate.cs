@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace FoosballApi.Models.Leagues
@@ -10,7 +9,7 @@ namespace FoosballApi.Models.Leagues
         public string Name { get; set; }
 
         [Required]
-        public LeagueType TypeOfLeague { get; set; }
+        public TypeOfLeague TypeOfLeague { get; set; }
 
         [Required]
         public int UpTo { get; set; }
