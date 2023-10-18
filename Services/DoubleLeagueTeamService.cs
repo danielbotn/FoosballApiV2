@@ -4,6 +4,7 @@ using System.Linq;
 using Dapper;
 using FoosballApi.Models;
 using FoosballApi.Models.DoubleLeagueTeams;
+using FoosballApi.Models.Leagues;
 using Npgsql;
 
 namespace FoosballApi.Services
@@ -12,6 +13,7 @@ namespace FoosballApi.Services
     {
         Task<List<DoubleLeagueTeamModel>> GetDoubleLeagueTeamsByLeagueId(int leagueId);
         Task<bool> CheckLeaguePermission(int leagueId, int userId);
+        Task<bool> CheckLeaguePermissionEasy(int leagueId, int userId, int currentOrganisationId);
         DoubleLeagueTeamModel CreateDoubleLeagueTeam(int leagueId, int currentOrganisationId, string name);
         Task<bool> CheckDoubleLeagueTeamPermission(int teamId, int userId, int currentOrganisationId);
         DoubleLeagueTeamModel GetDoubleLeagueTeamById(int teamId);
@@ -185,6 +187,29 @@ namespace FoosballApi.Services
                     WHERE league_id = @league_id",
                     new { league_id = leagueId });
                 return query.ToList();
+            }
+        }
+
+        public async Task<bool> CheckLeaguePermissionEasy(int leagueId, int userId, int currentOrganisationId)
+        {
+            bool result = false;
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<LeagueModel>(
+                    @"SELECT id as Id, name as Name, organisation_id as OrganisationId
+                    FROM leagues
+                    WHERE organisation_id = @organisation_id",
+                    new { organisation_id = currentOrganisationId });
+
+                
+                foreach (var item in query)
+                {
+                    if (item.Id == leagueId) 
+                    {
+                        result = true;
+                    }
+                }
+                return result;
             }
         }
     }

@@ -31,8 +31,8 @@ namespace FoosballApi.Controllers
             try
             {
                 string userId = User.Identity.Name;
-
-                bool permission = await _doubleLeagueTeamService.CheckLeaguePermission(leagueId, int.Parse(userId));
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+                bool permission = await _doubleLeagueTeamService.CheckLeaguePermissionEasy(leagueId, int.Parse(userId), int.Parse(currentOrganisationId));
 
                 if (!permission)
                     return Forbid();

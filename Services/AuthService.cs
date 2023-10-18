@@ -81,7 +81,7 @@ namespace FoosballApi.Services
             tmpUser.FirstName = user.FirstName;
             tmpUser.LastName = user.LastName;
             tmpUser.Created_at = now;
-            tmpUser.PhotoUrl = "https://avatars.dicebear.com/api/personas/:" + randomNumber + ".png";
+            tmpUser.PhotoUrl = "https://avatars.dicebear.com/7.x/personas/png?seed=" + randomNumber;
             
             using (var conn = new NpgsqlConnection(_connectionString))
             {

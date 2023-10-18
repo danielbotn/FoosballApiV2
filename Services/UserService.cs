@@ -2358,10 +2358,10 @@ namespace FoosballApi.Services
 
         private string GenerateRandomPhotoUrl()
         {
-            string result = "";
-            Random rnd = new Random();
+            Random rnd = new();
             int randomNumber = rnd.Next(1, 99999);
-            result = "https://avatars.dicebear.com/api/personas/:" + randomNumber + ".png";
+            string result = "https://avatars.dicebear.com/7.x/personas/png?seed=" + randomNumber;
+
             return result;
         }
 
