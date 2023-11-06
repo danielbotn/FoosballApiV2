@@ -26,6 +26,8 @@ namespace FoosballApi.Controllers
 
         [HttpGet("{leagueId}")]
         [ProducesResponseType(typeof(List<DoubleLeaguePlayerReadDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetDoubleLeaguePlayersByLeagueId(int leagueId)
         {
             try
@@ -52,6 +54,8 @@ namespace FoosballApi.Controllers
 
         [HttpGet("player/{id}", Name = "GetDoubleLeaguePlayerById")]
         [ProducesResponseType(typeof(DoubleLeaguePlayerReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetDoubleLeaguePlayerById(int id)
         {
             try
@@ -67,6 +71,40 @@ namespace FoosballApi.Controllers
                 var playerData = await _doubleLeaugePlayerService.GetDoubleLeaguePlayerById(id);
 
                 return Ok(_mapper.Map<DoubleLeaguePlayerReadDto>(playerData));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost]
+        [ProducesResponseType(typeof(DoubleLeaguePlayerCreateReturnDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> CreateDoubleLeaguePlayer([FromBody] DoubleLeaguePlayerCreateDto body)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                bool permission = await _doubleLeagueTeamService.CheckDoubleLeagueTeamPermission(body.TeamId, int.Parse(userId), int.Parse(currentOrganisationId));
+
+                if (!permission)
+                    return Forbid();
+
+                var createdPlayerId = await _doubleLeaugePlayerService.CreateDoubleLeaguePlayer(body.UserOneId, body.TeamId);
+                var createdPlayerTwoId = await _doubleLeaugePlayerService.CreateDoubleLeaguePlayer(body.UserTwoId, body.TeamId);
+
+                DoubleLeaguePlayerCreateReturnDto result = new()
+                {
+                    PlayerOneId = createdPlayerId,
+                    PlayerTwoId = createdPlayerTwoId,
+                    InsertionSuccessfull = true
+                };
+
+                return Ok(result);
             }
             catch (Exception e)
             {

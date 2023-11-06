@@ -75,19 +75,19 @@ namespace FoosballApi.Controllers
 
         [HttpPost()]
         [ProducesResponseType(typeof(DoubleLeagueTeamReadDto), StatusCodes.Status201Created)]
-        public async Task <ActionResult> CreateDoubleLeagueTeam(int leagueId, string name)
+        public async Task <ActionResult> CreateDoubleLeagueTeam([FromBody] DoubleLeagueCreateDto body)
         {
             try
             {
                 string userId = User.Identity.Name;
                 string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
 
-                bool permission = await _doubleLeagueTeamService.CheckLeaguePermission(leagueId, int.Parse(userId));
+                bool permission = await _doubleLeagueTeamService.CheckLeaguePermissionEasy(body.LeagueId, int.Parse(userId), int.Parse(currentOrganisationId));
 
                 if (!permission)
                     return Forbid();
 
-                var newTeam = _doubleLeagueTeamService.CreateDoubleLeagueTeam(leagueId, int.Parse(currentOrganisationId), name);
+                var newTeam = await _doubleLeagueTeamService.CreateDoubleLeagueTeam(body.LeagueId, int.Parse(currentOrganisationId), body.Name);
 
                 var doubleLeagueTeamReadDto = _mapper.Map<DoubleLeagueTeamReadDto>(newTeam);
 

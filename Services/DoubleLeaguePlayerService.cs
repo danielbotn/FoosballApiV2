@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Dapper;
 using FoosballApi.Models.DoubleLeaguePlayers;
 using Npgsql;
+using Sprache;
 
 namespace FoosballApi.Services
 {
@@ -12,6 +13,7 @@ namespace FoosballApi.Services
     {
         Task<IEnumerable<DoubleLeaguePlayerModelDapper>> GetDoubleLeaguePlayersyLeagueId(int leagueId);
         Task<DoubleLeaguePlayerModelDapper> GetDoubleLeaguePlayerById(int playerId);
+        Task<int> CreateDoubleLeaguePlayer(int playerId, int teamId);
     }
 
     public class DoubleLeaguePlayerService : IDoubleLeaguePlayerService
@@ -55,5 +57,25 @@ namespace FoosballApi.Services
                 return dapperReadData.ToList();
             }
         }
+
+        public async Task<int> CreateDoubleLeaguePlayer(int playerId, int teamId)
+        {
+            int result;
+            using var conn = new NpgsqlConnection(_connectionString);
+            var doubleLeaguePlayerId = await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO double_league_players (user_id, double_league_team_id)
+                    VALUES (@user_id, @double_league_team_id)
+                    RETURNING id",
+                new
+                {
+                    user_id = playerId,
+                    double_league_team_id = teamId
+                });
+
+            result = doubleLeaguePlayerId;
+            return result;
+        }
+
+
     }
 }

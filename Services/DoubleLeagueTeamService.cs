@@ -14,7 +14,7 @@ namespace FoosballApi.Services
         Task<List<DoubleLeagueTeamModel>> GetDoubleLeagueTeamsByLeagueId(int leagueId);
         Task<bool> CheckLeaguePermission(int leagueId, int userId);
         Task<bool> CheckLeaguePermissionEasy(int leagueId, int userId, int currentOrganisationId);
-        DoubleLeagueTeamModel CreateDoubleLeagueTeam(int leagueId, int currentOrganisationId, string name);
+        Task<DoubleLeagueTeamModel> CreateDoubleLeagueTeam(int leagueId, int currentOrganisationId, string name);
         Task<bool> CheckDoubleLeagueTeamPermission(int teamId, int userId, int currentOrganisationId);
         DoubleLeagueTeamModel GetDoubleLeagueTeamById(int teamId);
         void DeleteDoubleLeagueTeam(int teamId);
@@ -113,7 +113,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-        public DoubleLeagueTeamModel CreateDoubleLeagueTeam(int leagueId, int currentOrganisationId, string name)
+        public async Task<DoubleLeagueTeamModel> CreateDoubleLeagueTeam(int leagueId, int currentOrganisationId, string name)
         {
             DateTime now = DateTime.Now;
             DoubleLeagueTeamModel newTeam = new();
@@ -124,15 +124,18 @@ namespace FoosballApi.Services
 
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                conn.Execute(
+                var id = await conn.ExecuteScalarAsync<int>(
                     @"INSERT INTO double_league_teams (name, created_at, organisation_id, league_id)
-                    VALUES (@name, @created_at, @organisation_id, @league_id)",
+                    VALUES (@name, @created_at, @organisation_id, @league_id)
+                    RETURNING id",
                     new {
                         name = newTeam.Name, 
                         created_at = newTeam.CreatedAt,
                         organisation_id = newTeam.OrganisationId,
                         league_id = newTeam.LeagueId
                     });
+
+                newTeam.Id = id;
             }
 
             return newTeam;
