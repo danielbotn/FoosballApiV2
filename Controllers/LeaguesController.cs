@@ -229,8 +229,8 @@ namespace FoosballApi.Controllers
                 string userId = User.Identity.Name;
                 bool permission = await _doubleLeagueMatchService.CheckLeaguePermission(leagueId, int.Parse(userId));
 
-                if (!permission)
-                    return Forbid();
+                // if (!permission)
+                //     return Forbid();
 
                 var standings = await _doubleLeagueMatchService.GetDoubleLeagueStandings(leagueId);
 

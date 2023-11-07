@@ -13,6 +13,7 @@ namespace FoosballApi.Models.Other
         public int PositionInLeague { get; set; }
         public int MatchesPlayed { get; set; }
         public int Points { get; set; }
+        public string TeamName { get; set; }
         public TeamMember[] TeamMembers { get; set; }
     }
 }

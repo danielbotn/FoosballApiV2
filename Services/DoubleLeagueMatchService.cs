@@ -324,6 +324,20 @@ namespace FoosballApi.Services
             return result;
         }
 
+        private async Task<string> GetTeamName(int leagueId, int teamId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var teamName = await conn.QueryFirstAsync<string>(
+                    @"SELECT name
+                    FROM double_league_teams
+                    WHERE id = @id AND league_id = @league_id",
+                new { id = teamId, league_id = leagueId });
+                
+                return teamName;
+            }
+        }
+
         private async Task<List<DoubleLeagueMatchModel>> GetMatchesWonATeamOne(int teamId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -523,7 +537,8 @@ namespace FoosballApi.Services
                     PositionInLeague = Zero,
                     MatchesPlayed = Zero,
                     Points = Points * totalMatchesWon,
-                    TeamMembers = await GetTeamMembers(teamId)
+                    TeamMembers = await GetTeamMembers(teamId),
+                    TeamName = await GetTeamName(leagueId, teamId)
                 };
                 standings.Add(dls);
             }
