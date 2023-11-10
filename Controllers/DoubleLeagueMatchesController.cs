@@ -33,7 +33,7 @@ namespace FoosballApi.Controllers
                 string userId = User.Identity.Name;
                 string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
 
-                bool permission = await _doubleLeaugeMatchService.CheckLeaguePermission(leagueId, int.Parse(userId));
+                bool permission = await _doubleLeaugeMatchService.CheckLeaguePermissionByOrganisationId(leagueId, int.Parse(currentOrganisationId));
 
                 if (!permission)
                     return Forbid();

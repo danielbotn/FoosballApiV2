@@ -7,6 +7,7 @@ using FoosballApi.Models.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueMatches;
 using FoosballApi.Models.DoubleLeaguePlayers;
 using FoosballApi.Models.DoubleLeagueTeams;
+using FoosballApi.Models.Leagues;
 using FoosballApi.Models.Other;
 using Npgsql;
 
@@ -16,11 +17,13 @@ namespace FoosballApi.Services
     {
         Task<bool> CheckMatchAccess(int matchId, int userId, int currentOrganisationId);
         Task<bool> CheckLeaguePermission(int leagueId, int userId);
+        Task<bool> CheckLeaguePermissionByOrganisationId(int leagueId, int currentOrganisationId);
         Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisationId(int currentOrganisationId, int leagueId);
         Task<DoubleLeagueMatchModel> GetMatchById(int matchId);
         void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match);
         Task<DoubleLeagueMatchModel> ResetMatch(DoubleLeagueMatchModel doubleLeagueMatchModel, int matchId);
         Task<IEnumerable<DoubleLeagueStandingsQuery>> GetDoubleLeagueStandings(int leagueId);
+        Task<List<DoubleLeagueMatchModel>> CreateDoubleLeagueMatches(int leagueId, int? howManyRounds);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -311,17 +314,16 @@ namespace FoosballApi.Services
 
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var query = await conn.QueryAsync<DoubleLeagueMatchesSelect>(
-                    @"SELECT DISTINCT team_one_id as TeamOneId, team_two_id as TeamTwoId
-                    FROM double_league_matches
+                var query = await conn.QueryAsync<int>(
+                    @"SELECT DISTINCT id
+                    FROM double_league_teams
                     WHERE league_id = @league_id",
                 new { league_id = leagueId });
                 query = query.ToList();
 
                 foreach (var item in query)
                 {
-                    result.Add(item.TeamOneId);
-                    result.Add(item.TeamTwoId);
+                    result.Add(item);
                 }
             }
     
@@ -551,6 +553,146 @@ namespace FoosballApi.Services
             var sortedLeagueWithPositions = AddPositionInLeagueToList(sortedLeague);
 
             return sortedLeagueWithPositions;
+        }
+
+        public async Task<List<DoubleLeagueMatchModel>> CreateDoubleLeagueMatches(int leagueId, int? howManyRounds)
+        {
+            // Check if howManyRounds parameter is null and retrieve it from the leagues table
+            if (!howManyRounds.HasValue)
+            {
+                howManyRounds = await GetHowManyRoundsFromLeague(leagueId);
+            }
+
+            // Retrieve all teams for the given league
+            var teams = await GetTeamsForLeague(leagueId);
+
+            // Create double league matches
+            var matches = GenerateDoubleLeagueMatches(teams, howManyRounds.Value, leagueId);
+
+            // Insert matches into the database
+            var newMatches = await InsertDoubleLeagueMatches(matches);
+
+            return newMatches;
+        }
+
+        private async Task<int?> GetHowManyRoundsFromLeague(int leagueId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstOrDefaultAsync<int?>(
+                    @"SELECT how_many_rounds FROM leagues WHERE id = @leagueId",
+                    new { leagueId });
+
+                return query;
+            }
+        }
+
+        private async Task<List<DoubleLeagueTeamModel>> GetTeamsForLeague(int leagueId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryAsync<DoubleLeagueTeamModel>(
+                    @"SELECT id, name, created_at as CreatedAt, organisation_id as OrganisationId, league_id as LeagueId
+                    FROM double_league_teams
+                    WHERE league_id = @leagueId",
+                    new { leagueId });
+
+                return query.ToList();
+            }
+        }
+
+        private List<DoubleLeagueMatchModel> GenerateDoubleLeagueMatches(List<DoubleLeagueTeamModel> teams, int howManyRounds, int leagueId)
+        {
+            var matches = new List<DoubleLeagueMatchModel>();
+
+            for (int round = 1; round <= howManyRounds; round++)
+            {
+                for (int i = 0; i < teams.Count - 1; i++)
+                {
+                    for (int j = i + 1; j < teams.Count; j++)
+                    {
+                        var match = new DoubleLeagueMatchModel
+                        {
+                            TeamOneId = teams[i].Id,
+                            TeamTwoId = teams[j].Id,
+                            LeagueId = leagueId,
+                            StartTime = null,
+                            EndTime = null,
+                            TeamOneScore = 0,
+                            TeamTwoScore = 0,
+                            MatchStarted = false,
+                            MatchEnded = false,
+                            MatchPaused = false
+                        };
+
+                        matches.Add(match);
+                    }
+                }
+            }
+
+            return matches;
+        }
+
+        private async Task<List<DoubleLeagueMatchModel>> InsertDoubleLeagueMatches(List<DoubleLeagueMatchModel> matches)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        foreach (var match in matches)
+                        {
+                            // Use RETURNING to get the ID of the newly inserted row
+                            var insertedId = await conn.ExecuteScalarAsync<int>(
+                                @"INSERT INTO double_league_matches (team_one_id, team_two_id, league_id, start_time, end_time, team_one_score, team_two_score, match_started, match_ended, match_paused)
+                                VALUES (@TeamOneId, @TeamTwoId, @LeagueId, @StartTime, @EndTime, @TeamOneScore, @TeamTwoScore, @MatchStarted, @MatchEnded, @MatchPaused)
+                                RETURNING id",
+                                match, transaction);
+
+                            // Update the match with the inserted ID
+                            match.Id = insertedId;
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        // Handle the exception as needed (logging, rethrow, etc.)
+                        throw;
+                    }
+                }
+            }
+
+            return matches;
+        }
+
+        public async Task<bool> CheckLeaguePermissionByOrganisationId(int leagueId, int currentOrganisationId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var query = await conn.QueryFirstAsync<LeagueModel>(
+                    @"SELECT id, organisation_id AS OrganisationId
+                    FROM leagues
+                    WHERE id = @leagueId",
+                    new { leagueId });
+
+                if (query != null)
+                {
+                    if (query.Id == leagueId && query.OrganisationId == currentOrganisationId)
+                    {
+                        return true;
+                    }
+                    return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
         }
     }
 }
