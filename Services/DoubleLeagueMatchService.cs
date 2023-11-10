@@ -132,9 +132,11 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var teams = conn.Query<TeamModel>(
-                    @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email
+                    @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl, dlt.name as TeamName,
+                    u.id as UserId
                     FROM double_league_players dlp
                     JOIN users u ON dlp.user_id = u.id
+                    JOIN double_league_teams dlt on dlt.id = @team_one_id
                     WHERE dlp.double_league_team_id = @team_one_id",
                 new { team_one_id = item.TeamOneId });
                 return teams.ToList();
@@ -146,9 +148,11 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var teams = conn.Query<TeamModel>(
-                    @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email
+                    @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl, dlt.name as TeamName,
+                    u.id as UserId
                     FROM double_league_players dlp
                     JOIN users u ON dlp.user_id = u.id
+                    JOIN double_league_teams dlt on dlt.id = @team_two_id
                     WHERE dlp.double_league_team_id = @team_two_id",
                 new { team_two_id = item.TeamTwoId });
                 return teams.ToList();

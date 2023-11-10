@@ -7,5 +7,7 @@ namespace FoosballApi.Models.DoubleLeagueMatches
         public string LastName { get; set; }
         public string Email { get; set; }
         public string PhotoUrl { get; set; }
+        public string TeamName { get; set; }
+        public int UserId { get; set; }
     }
 }
