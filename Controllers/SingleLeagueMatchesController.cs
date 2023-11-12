@@ -133,5 +133,28 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
-    }
+
+        [HttpPost("create-matches")]
+        public async Task<ActionResult> CreateSingleLeagueMatches([FromBody] CreateSingleLeagueMatchesBody body)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+
+                bool permission = await _singleLeagueMatchService.CheckLeaguePermission(body.LeagueId, int.Parse(userId));
+
+                if (!permission)
+                    return Forbid(); // hér þarf að athuga
+                
+                var matches = await _singleLeagueMatchService.CreateSingleLeagueMatches(body);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+    }   
 }

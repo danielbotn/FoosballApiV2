@@ -243,27 +243,5 @@ namespace FoosballApi.Controllers
                 return StatusCode(500, e.Message);
             }
         }
-
-        [HttpPost("double-league/create-matches")]
-        [ProducesResponseType(typeof(List<DoubleLeagueMatchModel>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<DoubleLeagueMatchModel>>> CreateDoubleLeagueMatches([FromBody] CreateDoubleLeagueMatchesBody body)
-        {
-            try
-            {
-                string userId = User.Identity.Name;
-                bool permission = await _doubleLeagueMatchService.CheckLeaguePermission(body.LeagueId, int.Parse(userId));
-
-                if (!permission)
-                    return Forbid(); // hér þarf að athuga
-
-                var standings = await _doubleLeagueMatchService.CreateDoubleLeagueMatches(body.LeagueId, body.HowManyRounds);
-
-                return Ok(standings);
-            }
-            catch (Exception e)
-            {
-                return StatusCode(500, e.Message);
-            }
-        }
     }
 }

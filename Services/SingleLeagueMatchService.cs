@@ -1,4 +1,5 @@
 using Dapper;
+using FoosballApi.Dtos.SingleLeagueMatches;
 using FoosballApi.Models;
 using FoosballApi.Models.Leagues;
 using FoosballApi.Models.Matches;
@@ -17,6 +18,7 @@ namespace FoosballApi.Services
         Task<SingleLeagueMatchModel> GetSingleLeagueMatchById(int matchId);
         void UpdateSingleLeagueMatch(SingleLeagueMatchModel match);
         void ResetMatch(SingleLeagueMatchModel match);
+        Task<List<SingleLeagueMatchModel>> CreateSingleLeagueMatches(CreateSingleLeagueMatchesBody body);
     }
 
     public class SingleLeagueMatchService : ISingleLeagueMatchService
@@ -465,6 +467,109 @@ namespace FoosballApi.Services
 
             ResetAllColumns(match);
 
+        }
+
+        public async Task<List<SingleLeagueMatchModel>> CreateSingleLeagueMatches(CreateSingleLeagueMatchesBody body)
+        {
+            // Check if howManyRounds parameter is null and retrieve it from the leagues table
+            int howManyRounds = (int)(body.HowManyRounds ?? await GetHowManyRoundsFromLeague(body.LeagueId));
+
+            // Retrieve all players for the given league
+            var players = await GetPlayersForLeague(body.LeagueId);
+
+            // Create single league matches
+            var matches = GenerateSingleLeagueMatches(players, howManyRounds, body.LeagueId);
+
+            // Insert matches into the database
+            await InsertSingleLeagueMatches(matches);
+
+            return matches;
+        }
+
+        private async Task<int?> GetHowManyRoundsFromLeague(int leagueId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var query = await conn.QueryFirstOrDefaultAsync<int?>(
+                @"SELECT how_many_rounds FROM leagues WHERE id = @leagueId",
+                new { leagueId });
+
+            return query;
+        }
+
+        private async Task<List<LeaguePlayersModel>> GetPlayersForLeague(int leagueId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var query = await conn.QueryAsync<LeaguePlayersModel>(
+                @"SELECT id as Id, user_id as UserId, league_id as LeagueId
+                    FROM league_players
+                    WHERE id = @id",
+                new { id = leagueId });
+
+            return query.ToList();
+        }
+
+        private List<SingleLeagueMatchModel> GenerateSingleLeagueMatches(List<LeaguePlayersModel> players, int howManyRounds, int leagueId)
+        {
+            var matches = new List<SingleLeagueMatchModel>();
+
+            for (int round = 1; round <= howManyRounds; round++)
+            {
+                for (int i = 0; i < players.Count - 1; i++)
+                {
+                    for (int j = i + 1; j < players.Count; j++)
+                    {
+                        var match = new SingleLeagueMatchModel
+                        {
+                            PlayerOne = players[i].UserId,
+                            PlayerTwo = players[j].UserId,
+                            LeagueId = leagueId,
+                            StartTime = null,
+                            EndTime = null,
+                            PlayerOneScore = 0,
+                            PlayerTwoScore = 0,
+                            MatchStarted = false,
+                            MatchEnded = false,
+                            MatchPaused = false
+                        };
+
+                        matches.Add(match);
+                    }
+                }
+            }
+
+            return matches;
+        }
+
+        private async Task InsertSingleLeagueMatches(List<SingleLeagueMatchModel> matches)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync();
+
+            using var transaction = conn.BeginTransaction();
+            try
+            {
+                foreach (var match in matches)
+                {
+                    // Use RETURNING to get the ID of the newly inserted row
+                    var insertedId = await conn.ExecuteScalarAsync<int>(
+                        @"INSERT INTO single_league_matches (player_one, player_two, league_id, start_time, end_time, player_one_score, player_two_score, match_started, match_ended, match_paused)
+                                VALUES (@PlayerOne, @PlayerTwo, @LeagueId, @StartTime, @EndTime, @PlayerOneScore, @PlayerTwoScore, @MatchStarted, @MatchEnded, @MatchPaused)
+                                RETURNING id",
+                        match, transaction);
+
+                    // Update the match with the inserted ID
+                    match.Id = insertedId;
+                }
+
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                // Handle the exception as needed (logging, rethrow, etc.)
+                throw;
+
+            }
         }
     }
 }

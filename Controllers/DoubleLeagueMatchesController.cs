@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using AutoMapper;
 using FoosballApi.Dtos.DoubleLeagueMatches;
+using FoosballApi.Dtos.Leagues;
 using FoosballApi.Models.DoubleLeagueMatches;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -129,6 +130,28 @@ namespace FoosballApi.Controllers
                 var matchData = await _doubleLeaugeMatchService.GetMatchById(matchId);
 
                 return Ok(_mapper.Map<AllMatchesModelReadDto>(matchData));
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost("create-matches")]
+        [ProducesResponseType(typeof(List<DoubleLeagueMatchModel>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<DoubleLeagueMatchModel>>> CreateDoubleLeagueMatches([FromBody] CreateDoubleLeagueMatchesBody body)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                bool permission = await _doubleLeaugeMatchService.CheckLeaguePermission(body.LeagueId, int.Parse(userId));
+
+                if (!permission)
+                    return Forbid(); // hér þarf að athuga
+
+                var matches = await _doubleLeaugeMatchService.CreateDoubleLeagueMatches(body.LeagueId, body.HowManyRounds);
+
+                return Ok(matches);
             }
             catch (Exception e)
             {
