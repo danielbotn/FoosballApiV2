@@ -502,13 +502,13 @@ namespace FoosballApi.Services
             var query = await conn.QueryAsync<LeaguePlayersModel>(
                 @"SELECT id as Id, user_id as UserId, league_id as LeagueId
                     FROM league_players
-                    WHERE id = @id",
-                new { id = leagueId });
+                    WHERE league_id = @league_id",
+                new { league_id = leagueId });
 
             return query.ToList();
         }
 
-        private List<SingleLeagueMatchModel> GenerateSingleLeagueMatches(List<LeaguePlayersModel> players, int howManyRounds, int leagueId)
+        private static List<SingleLeagueMatchModel> GenerateSingleLeagueMatches(List<LeaguePlayersModel> players, int howManyRounds, int leagueId)
         {
             var matches = new List<SingleLeagueMatchModel>();
 
@@ -552,9 +552,10 @@ namespace FoosballApi.Services
                 {
                     // Use RETURNING to get the ID of the newly inserted row
                     var insertedId = await conn.ExecuteScalarAsync<int>(
-                        @"INSERT INTO single_league_matches (player_one, player_two, league_id, start_time, end_time, player_one_score, player_two_score, match_started, match_ended, match_paused)
-                                VALUES (@PlayerOne, @PlayerTwo, @LeagueId, @StartTime, @EndTime, @PlayerOneScore, @PlayerTwoScore, @MatchStarted, @MatchEnded, @MatchPaused)
-                                RETURNING id",
+                        @"INSERT INTO single_league_matches 
+                        (player_one, player_two, league_id, start_time, end_time, player_one_score, player_two_score, match_started, match_ended, match_paused)
+                        VALUES (@PlayerOne, @PlayerTwo, @LeagueId, @StartTime, @EndTime, @PlayerOneScore, @PlayerTwoScore, @MatchStarted, @MatchEnded, @MatchPaused)
+                        RETURNING id",
                         match, transaction);
 
                     // Update the match with the inserted ID
@@ -563,12 +564,11 @@ namespace FoosballApi.Services
 
                 transaction.Commit();
             }
-            catch (Exception ex)
+            catch
             {
                 transaction.Rollback();
                 // Handle the exception as needed (logging, rethrow, etc.)
                 throw;
-
             }
         }
     }

@@ -148,7 +148,7 @@ namespace FoosballApi.Controllers
                 
                 var matches = await _singleLeagueMatchService.CreateSingleLeagueMatches(body);
 
-                return NoContent();
+                return Ok(matches);
             }
             catch (Exception e)
             {
