@@ -1,9 +1,3 @@
-using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using FoosballApi.Models.DoubleLeagueMatches;
-using FoosballApi.Models.DoubleLeagueTeams;
-
 namespace FoosballApi.Models.DoubleLeagueGoals
 {
     public class DoubleLeagueGoalModel
