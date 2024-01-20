@@ -129,7 +129,15 @@ namespace FoosballApi.Controllers
 
                 var matchData = await _doubleLeaugeMatchService.GetMatchById(matchId);
 
-                return Ok(_mapper.Map<AllMatchesModelReadDto>(matchData));
+                var matchDataMapped = _mapper.Map<AllMatchesModelReadDto>(matchData);
+
+                var teamOne = await _doubleLeaugeMatchService.GetTeamOne(matchDataMapped.TeamOneId);
+                var teamTwo = await _doubleLeaugeMatchService.GetTeamTwo(matchDataMapped.TeamTwoId);
+
+                matchDataMapped.TeamOne = teamOne.ToArray();
+                matchDataMapped.TeamTwo = teamTwo.ToArray();
+
+                return Ok(matchDataMapped);
             }
             catch (Exception e)
             {

@@ -17,5 +17,6 @@ namespace FoosballApi.Dtos.DoubleLeagueGoals
         public string ScorerLastName { get; set; }
         public string ScorerPhotoUrl { get; set; }
         public string GoalTimeStopWatch { get; set; }
+        public int MatchId { get; set; }
     }
 }

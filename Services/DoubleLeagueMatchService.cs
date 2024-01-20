@@ -24,6 +24,8 @@ namespace FoosballApi.Services
         Task<DoubleLeagueMatchModel> ResetMatch(DoubleLeagueMatchModel doubleLeagueMatchModel, int matchId);
         Task<IEnumerable<DoubleLeagueStandingsQuery>> GetDoubleLeagueStandings(int leagueId);
         Task<List<DoubleLeagueMatchModel>> CreateDoubleLeagueMatches(int leagueId, int? howManyRounds);
+        Task<List<TeamModel>> GetTeamOne(int teamOneId);
+        Task<List<TeamModel>> GetTeamTwo(int teamTwoId);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -130,13 +132,41 @@ namespace FoosballApi.Services
             }
         }
 
+        public async Task<List<TeamModel>> GetTeamOne(int teamOneId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var team = await conn.QueryAsync<TeamModel>(
+                @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl, dlt.name as TeamName,
+                    u.id as UserId, dlt.id as TeamId
+                    FROM double_league_players dlp
+                    JOIN users u ON dlp.user_id = u.id
+                    JOIN double_league_teams dlt on dlt.id = @team_one_id
+                    WHERE dlp.double_league_team_id = @team_one_id",
+            new { team_one_id = teamOneId });
+            return team.ToList();
+        }
+
+        public async Task<List<TeamModel>> GetTeamTwo(int teamTwoId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var team = await conn.QueryAsync<TeamModel>(
+                @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl, dlt.name as TeamName,
+                    u.id as UserId, dlt.id as TeamId
+                    FROM double_league_players dlp
+                    JOIN users u ON dlp.user_id = u.id
+                    JOIN double_league_teams dlt on dlt.id = @team_two_id
+                    WHERE dlp.double_league_team_id = @team_two_id",
+            new { team_two_id = teamTwoId });
+            return team.ToList();
+        }
+
         private List<TeamModel> GetSubQuery(AllMatchesModel item)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 var teams = conn.Query<TeamModel>(
                     @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl, dlt.name as TeamName,
-                    u.id as UserId
+                    u.id as UserId, dlt.id as TeamId
                     FROM double_league_players dlp
                     JOIN users u ON dlp.user_id = u.id
                     JOIN double_league_teams dlt on dlt.id = @team_one_id
@@ -152,7 +182,7 @@ namespace FoosballApi.Services
             {
                 var teams = conn.Query<TeamModel>(
                     @"SELECT dlp.id as Id, u.first_name as FirstName, u.last_name as LastName, u.email as Email, u.photo_url as PhotoUrl, dlt.name as TeamName,
-                    u.id as UserId
+                    u.id as UserId, dlt.id as TeamId
                     FROM double_league_players dlp
                     JOIN users u ON dlp.user_id = u.id
                     JOIN double_league_teams dlt on dlt.id = @team_two_id

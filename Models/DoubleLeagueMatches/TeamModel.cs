@@ -9,5 +9,6 @@ namespace FoosballApi.Models.DoubleLeagueMatches
         public string PhotoUrl { get; set; }
         public string TeamName { get; set; }
         public int UserId { get; set; }
+        public int TeamId { get; set; }
     }
 }
