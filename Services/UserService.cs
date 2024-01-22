@@ -2005,8 +2005,8 @@ namespace FoosballApi.Services
                     start_time as StartTime, end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore,
                     match_started as MatchStarted, match_ended as MatchEnded, match_paused as MatchPaused
                     FROM double_league_matches
-                    WHERE (team_one_id = @item OR team_two_id = @item) AND end_time != null
-                    ORDER BY id DESC");
+                    WHERE (team_one_id = @team_one_id OR team_two_id = @team_two_id) AND end_time != null
+                    ORDER BY id DESC", new { team_one_id = item, team_two_id = item });
                 result = doubleLeagueMatches.ToList();
             }
             return result;

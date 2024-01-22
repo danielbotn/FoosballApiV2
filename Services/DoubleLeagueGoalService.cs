@@ -104,16 +104,61 @@ namespace FoosballApi.Services
             return result;
         }
 
+        private async Task UpdateDoubleLeagueMatch(NpgsqlConnection conn, DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto)
+        {
+           var doubleLeagueMatch = await GetDoubleLeagueMatchByIdAsync(doubleLeagueGoalCreateDto.MatchId);
+           if (doubleLeagueGoalCreateDto.ScoredByTeamId == doubleLeagueMatch.TeamOneId)
+           {
+                await conn.ExecuteAsync(
+                @"UPDATE double_league_matches 
+                SET team_one_score = @team_one_score
+                WHERE id = @id",
+                new
+                {
+                    team_one_score = doubleLeagueGoalCreateDto.ScorerTeamScore,
+                    id = doubleLeagueGoalCreateDto.MatchId
+                });
+           }
+           else if (doubleLeagueGoalCreateDto.ScoredByTeamId == doubleLeagueMatch.TeamTwoId)
+           {
+                await conn.ExecuteAsync(
+                @"UPDATE double_league_matches 
+                SET team_two_score = @team_two_score
+                WHERE id = @id",
+                new
+                {
+                    team_two_score = doubleLeagueGoalCreateDto.ScorerTeamScore,
+                    id = doubleLeagueGoalCreateDto.MatchId
+                });
+           }
+        }
+
+        private static async Task EndDoubleLeagueMatch(NpgsqlConnection conn, int matchId)
+        {
+            await conn.ExecuteAsync(
+                @"UPDATE double_league_matches 
+                SET end_time = @end_time, match_ended = @match_ended
+                WHERE id = @id",
+                new
+                {
+                    end_time = DateTime.Now,
+                    match_ended = true,
+                    id = matchId
+                });
+        }
+
         public async Task<DoubleLeagueGoalModel> CreateDoubleLeagueGoal(DoubleLeagueGoalCreateDto doubleLeagueGoalCreateDto)
         {
             DateTime now = DateTime.Now;
-            DoubleLeagueGoalModel newGoal = new();
-            newGoal.TimeOfGoal = now;
-            newGoal.MatchId = doubleLeagueGoalCreateDto.MatchId;
-            newGoal.ScoredByTeamId = doubleLeagueGoalCreateDto.ScoredByTeamId;
-            newGoal.OpponentTeamId = doubleLeagueGoalCreateDto.OpponentTeamId;
-            newGoal.ScorerTeamScore = doubleLeagueGoalCreateDto.ScorerTeamScore;
-            newGoal.OpponentTeamScore = doubleLeagueGoalCreateDto.OpponentTeamScore;
+            DoubleLeagueGoalModel newGoal = new()
+            {
+                TimeOfGoal = now,
+                MatchId = doubleLeagueGoalCreateDto.MatchId,
+                ScoredByTeamId = doubleLeagueGoalCreateDto.ScoredByTeamId,
+                OpponentTeamId = doubleLeagueGoalCreateDto.OpponentTeamId,
+                ScorerTeamScore = doubleLeagueGoalCreateDto.ScorerTeamScore,
+                OpponentTeamScore = doubleLeagueGoalCreateDto.OpponentTeamScore
+            };
 
             if (doubleLeagueGoalCreateDto.WinnerGoal != null)
                 newGoal.WinnerGoal = (bool)doubleLeagueGoalCreateDto.WinnerGoal;
@@ -140,27 +185,31 @@ namespace FoosballApi.Services
                         user_scorer_id = newGoal.UserScorerId });
                
                 newGoal.Id = nGoal;
-            }
 
+                await UpdateDoubleLeagueMatch(conn, doubleLeagueGoalCreateDto);
+
+                if (newGoal.WinnerGoal == true)
+                {
+                    await EndDoubleLeagueMatch(conn, doubleLeagueGoalCreateDto.MatchId);
+                }
+            }
 
             return newGoal;
         }
 
         private async void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match)
         {
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                await conn.ExecuteAsync(
-                    @"UPDATE double_league_matches 
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.ExecuteAsync(
+                @"UPDATE double_league_matches 
                     SET team_one_score = @team_one_score, team_two_score = @team_two_score
                     WHERE id = @id",
-                    new 
-                    { 
-                        team_one_score = match.TeamOneScore, 
-                        team_two_score = match.TeamTwoScore, 
-                        id = match.Id 
-                    });
-            }
+                new
+                {
+                    team_one_score = match.TeamOneScore,
+                    team_two_score = match.TeamTwoScore,
+                    id = match.Id
+                });
         }
 
         private async void DeleteDoubleLeagueGoalAsync(int id)
@@ -292,7 +341,7 @@ namespace FoosballApi.Services
                     end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore, match_started as MatchStarted, 
                     match_ended as MatchEnded, match_paused as MatchPaused 
                     FROM double_league_matches WHERE id = @id",
-                    new { matchId });
+                    new { id = matchId });
                 return user;
             }
         }
@@ -301,6 +350,10 @@ namespace FoosballApi.Services
         {
             var match = GetDoubleLeagueMatchById(matchId);
             DateTime? matchStarted = match.StartTime;
+            DateTime dateTimeValue = (DateTime)matchStarted; // Replace this with your DateTime object
+            string matchStartedAsString = dateTimeValue.ToString("yyyy-MM-dd HH:mm");
+            string timeOfGoalAsString = timeOfGoal.ToString("yyyy-MM-dd HH:mm");
+            
             if (matchStarted == null)
             {
                 matchStarted = DateTime.Now;

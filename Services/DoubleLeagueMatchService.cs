@@ -41,18 +41,29 @@ namespace FoosballApi.Services
             #endif
         }
 
+        private static string ToReadableAgeString(TimeSpan span)
+        {
+            return string.Format("{0:hh\\:mm\\:ss}", span);
+        }
+
         public async Task<DoubleLeagueMatchModel> GetMatchById(int matchId)
         {
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                var match = await conn.QueryFirstOrDefaultAsync<DoubleLeagueMatchModel>(
-                    @"SELECT id as Id, team_one_id as TeamOneId, team_two_id as TeamTwoId, league_id as LeagueId, start_time as StartTime,
+            using var conn = new NpgsqlConnection(_connectionString);
+            var match = await conn.QueryFirstOrDefaultAsync<DoubleLeagueMatchModel>(
+                @"SELECT id as Id, team_one_id as TeamOneId, team_two_id as TeamTwoId, league_id as LeagueId, start_time as StartTime,
                     end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore, match_started as MatchStarted, 
                     match_ended as MatchEnded, match_paused as MatchPaused 
                     FROM double_league_matches WHERE id = @matchId",
-                    new { matchId });
-                return match;
+                new { matchId });
+
+            TimeSpan? playingTime = null;
+            if (match.EndTime != null && match.StartTime != null)
+            {
+                playingTime = match.EndTime - match.StartTime;
             }
+
+            match.TotalPlayingTime = playingTime != null ? ToReadableAgeString(playingTime.Value) : null;
+            return match;
         }
 
        public async Task<List<DoubleLeagueTeamModel>> GetDoubleLeagueTeamsByTeamId(DoubleLeagueMatchModel query)
@@ -232,6 +243,10 @@ namespace FoosballApi.Services
 
         public void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match)
         {
+            if (match.StartTime != null)
+            {
+                match.StartTime = DateTime.Now;
+            }
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Execute(
