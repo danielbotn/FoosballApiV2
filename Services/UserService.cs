@@ -2005,7 +2005,7 @@ namespace FoosballApi.Services
                     start_time as StartTime, end_time as EndTime, team_one_score as TeamOneScore, team_two_score as TeamTwoScore,
                     match_started as MatchStarted, match_ended as MatchEnded, match_paused as MatchPaused
                     FROM double_league_matches
-                    WHERE (team_one_id = @team_one_id OR team_two_id = @team_two_id) AND end_time != null
+                    WHERE (team_one_id = @team_one_id OR team_two_id = @team_two_id) AND end_time IS NOT NULL
                     ORDER BY id DESC", new { team_one_id = item, team_two_id = item });
                 result = doubleLeagueMatches.ToList();
             }
@@ -2021,8 +2021,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT user_id as UserId
                     FROM double_league_players
-                    WHERE double_league_team_id = @item AND user_id != @userId",
-                    new { userId, item.TeamOneId });
+                    WHERE double_league_team_id = @double_league_team_id AND user_id != @user_id",
+                    new { double_league_team_id = item.TeamOneId, user_id = userId });
                 result = teamMateId;
             }
             return result;
@@ -2037,8 +2037,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT user_id as UserId
                     FROM double_league_players
-                    WHERE double_league_team_id = @item AND user_id != @userId",
-                    new { userId, item.TeamTwoId });
+                    WHERE double_league_team_id = @double_league_team_id AND user_id != @user_id",
+                    new { double_league_team_id = item.TeamTwoId, user_id = userId });
                 result = teamMateId;
             }
             return result;
@@ -2053,8 +2053,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT id, user_id as UserId
                     FROM double_league_players
-                    WHERE double_league_team_id = @item",
-                    new { item = match.TeamTwoId });
+                    WHERE double_league_team_id = @double_league_team_id",
+                    new { double_league_team_id = match.TeamTwoId });
                 opponentData = opponentDataQuery.ToList();
             }
             return opponentData;
@@ -2069,8 +2069,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT id, user_id as UserId
                     FROM double_league_players
-                    WHERE double_league_team_id = @item",
-                    new { item = match.TeamOneId });
+                    WHERE double_league_team_id = @double_league_team_id",
+                    new { double_league_team_id = match.TeamOneId });
                 opponentData = opponentDataQuery.ToList();
             }
             return opponentData;
@@ -2085,8 +2085,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT first_name as FirstName
                     FROM users
-                    WHERE id = @teamMateId",
-                    new { teamMateId });
+                    WHERE id = @id",
+                    new { id = teamMateId });
                 result = teamMateFirstName;
             }
             return result;
@@ -2101,8 +2101,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT last_name as LastName
                     FROM users
-                    WHERE id = @teamMateId",
-                    new { teamMateId });
+                    WHERE id = @id",
+                    new { id = teamMateId });
                 result = teamMateLastName;
             }
             return result;
@@ -2117,8 +2117,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT photo_url as PhotoUrl
                     FROM users
-                    WHERE id = @teamMateId",
-                    new { teamMateId });
+                    WHERE id = @id",
+                    new { id = teamMateId });
                 result = teamMatePhotoUrl;
             }
             return result;
@@ -2133,8 +2133,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT first_name as FirstName
                     FROM users
-                    WHERE id = @oppoentId",
-                    new { oppoentId });
+                    WHERE id = @id",
+                    new { id = oppoentId });
                 result = opponentFirstName;
             }
             return result;
@@ -2149,8 +2149,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT last_name as LastName
                     FROM users
-                    WHERE id = @oppoentId",
-                    new { oppoentId });
+                    WHERE id = @id",
+                    new { id = oppoentId });
                 result = opponentLastName;
             }
             return result;
@@ -2181,8 +2181,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT first_name as FirstName
                     FROM users
-                    WHERE id = @oppoentId",
-                    new { oppoentId });
+                    WHERE id = @id",
+                    new { id = oppoentId });
                 result = opponentTwoFirstName;
             }
             return result;
@@ -2197,8 +2197,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT last_name as LastName
                     FROM users
-                    WHERE id = @oppoentId",
-                    new { oppoentId });
+                    WHERE id = @id",
+                    new { id = oppoentId });
                 result = opponentTwoLastName;
             }
             return result;
@@ -2213,8 +2213,8 @@ namespace FoosballApi.Services
                     @"
                     SELECT photo_url as PhotoUrl
                     FROM users
-                    WHERE id = @oppoentId",
-                    new { oppoentId });
+                    WHERE id = @id",
+                    new { id = oppoentId });
                 result = opponentPhotoUrl;
             }
             return result;
@@ -2235,8 +2235,8 @@ namespace FoosballApi.Services
                     teamMateId =  GetTeamMateIdDoubleLeagueMatchesPagnation(userId, item);
                     var opponentData = GetOppoentDateDoubleLeagueMatchesHelper(userId, item);
 
-                    opponentId = opponentData.First().Id;
-                    opponentTwoId = opponentData.Last().Id;
+                    opponentId = opponentData.First().UserId;
+                    opponentTwoId = opponentData.Last().UserId;
                     userScore = (int)item.TeamOneScore;
                     opponentScore = (int)item.TeamTwoScore;
                 }
@@ -2246,8 +2246,8 @@ namespace FoosballApi.Services
                         
                     var opponentData = GetOppoentDataTeamOneIdDoubleLeagueMatchesHelper(userId, item);
 
-                    opponentId = opponentData.First().Id;
-                    opponentTwoId = opponentData.LastOrDefault().Id;
+                    opponentId = opponentData.First().UserId;
+                    opponentTwoId = opponentData.LastOrDefault().UserId;
                     userScore = (int)item.TeamTwoScore;
                     opponentScore = (int)item.TeamOneScore;
                 }
@@ -2263,7 +2263,7 @@ namespace FoosballApi.Services
                     TeamMatePhotoUrl = GetTeamMatePhotUrlDoubleLeaugeMatches(userId, teamMateId),
                     MatchId = item.Id,
                     OpponentId = opponentId,
-                    OpponentTwoId = null,
+                    OpponentTwoId = opponentTwoId,
                     OpponentOneFirstName = GetOpponentFirstNameDoubleLeaugeMatches(userId, opponentId),
                     OpponentOneLastName = GetOpponentLastNameDoubleLeaugeMatches(userId, opponentId),
                     OpponentOnePhotoUrl = GetOpponentOnePhotoUrlDoubleLeaugeMatches(userId, opponentId),
