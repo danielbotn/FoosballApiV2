@@ -1,14 +1,9 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using FoosballApi.Models;
 
 namespace FoosballApi
 {
     public class VerificationModel
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
@@ -23,7 +18,5 @@ namespace FoosballApi
         [Required]
         public bool HasVerified { get; set; }
 
-        [ForeignKey("UserId")]
-        public virtual User User { get; set; }
     }
 }

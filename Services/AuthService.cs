@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Dapper;
 using FoosballApi.Models;
+using FoosballApi.Models.Accounts;
 using FoosballApi.Models.OldRefreshTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -16,7 +17,7 @@ namespace FoosballApi.Services
         void CreateUser(User user);
         // bool VerifyEmail(string token);
         Task<bool> VerifyCode(string token, int userId);
-        // VerificationModel ForgotPassword(ForgotPasswordRequest model, string origin);
+        Task<VerificationModel> ForgotPassword(ForgotPasswordRequest model, string origin);
         // bool SaveChanges();
         VerificationModel AddVerificationInfo(User user, string origin);
         // void ResetPassword(ResetPasswordRequest model);
@@ -99,29 +100,62 @@ namespace FoosballApi.Services
             }
         }
 
-        // public VerificationModel ForgotPassword(ForgotPasswordRequest model, string origin)
-        // {
-        //     var account = _context.Users.SingleOrDefault(x => x.Email == model.Email);
+        private async Task<User> GetUserEmail(string email)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var user = await conn.QueryFirstOrDefaultAsync<User>(
+                    @"SELECT id, email, first_name as FirstName, last_name as LastName, 
+                    created_at, current_organisation_id as CurrentOrganisationId, photo_url as PhotoUrl 
+                    FROM Users WHERE email = @email",
+                    new { email });
 
-        //     VerificationModel vModel = _context.Verifications.SingleOrDefault(x => x.UserId == account.Id);
+            return user;
+        }
 
-        //     // always return ok response to prevent email enumeration
-        //     if (account == null) return null;
+        private async Task<VerificationModel> GetVerificationInfo(int userId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var user = await conn.QueryFirstOrDefaultAsync<VerificationModel>(
+                    @"SELECT id as Id, user_id as UserId, verification_token as VerificationToken, password_reset_token as PasswordResetToken,
+                    password_reset_token_expires as PasswordResetTokenExpires, has_verified as HasVerified
+                    FROM verifications WHERE user_id = @user_id",
+                    new { user_id =  userId});
 
-        //     // create reset token that expires after 1 day
-        //     vModel.PasswordResetToken = RandomTokenString();
-        //     vModel.PasswordResetTokenExpires = DateTime.UtcNow.AddDays(1);
+            return user;
+        }
 
-        //     _context.Verifications.Update(vModel);
-        //     _context.SaveChanges();
+        private async Task UpdateVerification(VerificationModel vModel)
+        {
+             using var conn = new NpgsqlConnection(_connectionString);
+             await conn.ExecuteAsync(
+                @"UPDATE verifications 
+                SET password_reset_token = @password_reset_token,
+                password_reset_token_expires = @password_reset_token_expires::timestamp without time zone
+                WHERE id = @id",
+                new
+                {
+                    password_reset_token = vModel.PasswordResetToken,
+                    password_reset_token_expires = vModel.PasswordResetTokenExpires,
+                    id = vModel.Id
+                });
+        }
 
-        //     return vModel;
-        // }
+        public async Task<VerificationModel> ForgotPassword(ForgotPasswordRequest model, string origin)
+        {
+            var account = await GetUserEmail(model.Email);
+            // always return ok response to prevent email enumeration
+            if (account == null) return null;
 
-        // public bool SaveChanges()
-        // {
-        //     return (_context.SaveChanges() >= 0);
-        // }
+            VerificationModel vModel = await GetVerificationInfo(account.Id);
+            
+            // create reset token that expires after 1 day
+            vModel.PasswordResetToken = RandomTokenString();
+            vModel.PasswordResetTokenExpires = DateTime.UtcNow.AddDays(1);
+
+            await UpdateVerification(vModel);
+
+            return vModel;
+        }
 
         private async Task<VerificationModel> GetVerificationModel(int userId, string token)
         {
@@ -219,16 +253,16 @@ namespace FoosballApi.Services
             return firstFiveOfToken;
         }
 
-        // private string RandomTokenString()
-        // {
-        //     using var rngCryptoServiceProvider = new RNGCryptoServiceProvider();
-        //     var randomBytes = new byte[40];
-        //     rngCryptoServiceProvider.GetBytes(randomBytes);
-        //     // convert random bytes to hex string
-        //     string token = BitConverter.ToString(randomBytes).Replace("-", "");
-        //     string firstFiveOfToken = token.Substring(0, 5);
-        //     return firstFiveOfToken;
-        // }
+        private static string RandomTokenString()
+        {
+            using var rngCryptoServiceProvider = new RNGCryptoServiceProvider();
+            var randomBytes = new byte[40];
+            rngCryptoServiceProvider.GetBytes(randomBytes);
+            // convert random bytes to hex string
+            string token = BitConverter.ToString(randomBytes).Replace("-", "");
+            string firstFiveOfToken = token.Substring(0, 5);
+            return firstFiveOfToken;
+        }
 
         // public void ResetPassword(ResetPasswordRequest model)
         // {

@@ -177,26 +177,26 @@ namespace FoosballApi.Controllers
             }
         }
 
-        // [HttpPost("forgot-password")]
-        // [ProducesResponseType(typeof(UserForgotPassword), StatusCodes.Status200OK)]
-        // public IActionResult ForgotPassword(ForgotPasswordRequest model)
-        // {
-        //     try
-        //     {
-        //         var verification = _authService.ForgotPassword(model, Request.Headers["origin"]);
-        //         var user = _userService.GetUserByEmail(model.Email);
-        //         _emailService.SendPasswordResetEmail(verification, user, Request.Headers["origin"]);
-        //         UserForgotPassword userForgotPassword = new UserForgotPassword
-        //         {
-        //             Message = "Password reset successful, you can now login"
-        //         };
-        //         return Ok(userForgotPassword);
-        //     }
-        //     catch (Exception e)
-        //     {
-        //         return StatusCode(500, e.Message);
-        //     }
-        // }
+        [HttpPost("forgot-password")]
+        [ProducesResponseType(typeof(UserForgotPassword), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest model)
+        {
+            try
+            {
+                var verification = await _authService.ForgotPassword(model, Request.Headers["origin"]);
+                var user = _userService.GetUserByEmail(model.Email);
+                await _emailService.SendPasswordResetEmail(verification, user, Request.Headers["origin"], model);
+                UserForgotPassword userForgotPassword = new()
+                {
+                    Message = "Reset email was successfully sent to user"
+                };
+                return Ok(userForgotPassword);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
 
         // [HttpPost("reset-password")]
         // [ProducesResponseType(typeof(UserForgotPassword), StatusCodes.Status200OK)]

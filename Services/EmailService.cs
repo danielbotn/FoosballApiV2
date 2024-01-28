@@ -1,9 +1,11 @@
 using FoosballApi.Helpers;
 using FoosballApi.Models;
+using FoosballApi.Models.Accounts;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 using MimeKit.Text;
+using Newtonsoft.Json;
 
 namespace FoosballApi
 {
@@ -11,7 +13,28 @@ namespace FoosballApi
     {
         void Send(string to, string subject, string html, string from = null);
         void SendVerificationEmail(VerificationModel vModel, User user, string origin);
-        void SendPasswordResetEmail(VerificationModel vModel, User user, string origin);
+        Task SendPasswordResetEmail(VerificationModel vModel, User user, string origin, ForgotPasswordRequest request);
+    }
+
+    public class EmailData
+    {
+        public string from { get; set; }
+        public string[] to { get; set; }
+        public string subject { get; set; }
+        public string html { get; set; }
+        public EmailHeaders headers { get; set; }
+        public EmailAttachment[] attachments { get; set; }
+    }
+
+    public class EmailHeaders
+    {
+        public string XEntityRefID { get; set; }
+    }
+
+    public class EmailAttachment
+    {
+        public string filename { get; set; }
+        public byte[] content { get; set; }
     }
 
     public class EmailService : IEmailService
@@ -21,16 +44,42 @@ namespace FoosballApi
         
         }
 
+       public async Task<string> SendWithApi(string to, string subject, string html, string from = null)
+        {
+            HttpCaller httpCaller = new();
+
+            // Construct the request body for sending an email using Resend API
+            EmailData emailData = new()
+            {
+                from = "Acme <onboarding@resend.dev>",
+                to = new[] { to },
+                subject = subject,
+                html = html,
+                headers = new EmailHeaders
+                {
+                    XEntityRefID = "123"
+                }
+            };
+
+            string bodyParam = JsonConvert.SerializeObject(emailData);
+            string URL = "https://api.resend.com/emails";
+
+            // Make the API call to send the email using Resend API
+            string data = await httpCaller.CallSenderApi(bodyParam, URL);
+            return data;
+        }
+
+
         public void Send(string to, string subject, string html, string from = null)
         {
             var smtpEmailFrom = Environment.GetEnvironmentVariable("SmtpEmailFrom");
-            var smtpHost = Environment.GetEnvironmentVariable("SmtpHost");
-            var smtpPort = Environment.GetEnvironmentVariable("SmtpPort");
-            var smtpUser = Environment.GetEnvironmentVariable("SmtpUser");
-            var smtpPass = Environment.GetEnvironmentVariable("SmtpPass");
+            var smtpHost = Environment.GetEnvironmentVariable("resendSmtpHost");
+            var smtpPort = Environment.GetEnvironmentVariable("resendSmtpPort");
+            var smtpUser = Environment.GetEnvironmentVariable("resendSmtpUser");
+            var smtpPass = Environment.GetEnvironmentVariable("resendSmtpPassword");
             // create message
             var email = new MimeMessage();
-            email.From.Add(MailboxAddress.Parse(from ?? smtpEmailFrom));
+            email.From.Add(MailboxAddress.Parse("onboarding@resend.dev"));
             email.To.Add(MailboxAddress.Parse(to));
             email.Subject = subject;
             email.Body = new TextPart(TextFormat.Html) { Text = html };
@@ -43,7 +92,7 @@ namespace FoosballApi
             smtp.Disconnect(true);
         }
 
-        public void SendPasswordResetEmail(VerificationModel vModel, User user, string origin)
+        public async Task SendPasswordResetEmail(VerificationModel vModel, User user, string origin, ForgotPasswordRequest request)
         {
             string message;
             if (!string.IsNullOrEmpty(origin))
@@ -58,11 +107,12 @@ namespace FoosballApi
                              <p><code>{vModel.PasswordResetToken}</code></p>";
             }
 
-            Send(
+            await SendWithApi(
                 to: user.Email,
-                subject: "Foosball - Reset Password",
+                subject: "Dano Foosball - Reset Password",
                 html: $@"<h4>Reset Password Email</h4>
-                         {message}"
+                         {message}",
+                from: request.Email
             );
         }
 
