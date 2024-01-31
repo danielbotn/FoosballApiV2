@@ -95,23 +95,25 @@ namespace FoosballApi
         public async Task SendPasswordResetEmail(VerificationModel vModel, User user, string origin, ForgotPasswordRequest request)
         {
             string message;
-            if (!string.IsNullOrEmpty(origin))
-            {
-                var resetUrl = $"{origin}/auth/reset-password?token={vModel.PasswordResetToken}";
-                message = $@"<p>Please click the below link to reset your password, the link will be valid for 1 day:</p>
-                             <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
-            }
-            else
-            {
-                message = $@"<p>Please use the below token to reset your password with the <code>/accounts/reset-password</code> api route:</p>
-                             <p><code>{vModel.PasswordResetToken}</code></p>";
-            }
+
+            message = $"<h1>RESET YOUR PASSWORD</h1>";
+
+            message +=  $"<p>Hi {user.FirstName}, </p>";
+
+            message += "<p>Lost your password? Click the button below and follow the instructions to change your DANO password.</p>";
+            message += "<p>If you didn't change your password, or if you have any questions, please contact Customer Support.</p>";
+
+            string combinedInfo = $"{user.Id}-{user.FirstName}-{vModel.PasswordResetToken}-{vModel.PasswordResetTokenExpires}";
+            string encryptCobinedInfo = EncryptionHelper.EncryptString(combinedInfo);
+            string resetUrl = $"http://localhost:5173/forgotPassword/{encryptCobinedInfo}";
+
+            message += $"<a href='{resetUrl}' style='background-color: green; color: white; padding: 15px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>Reset Password</a>";
 
             await SendWithApi(
                 to: user.Email,
                 subject: "Dano Foosball - Reset Password",
                 html: $@"<h4>Reset Password Email</h4>
-                         {message}",
+                        {message}",
                 from: request.Email
             );
         }
