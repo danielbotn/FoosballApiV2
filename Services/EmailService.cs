@@ -12,7 +12,7 @@ namespace FoosballApi
     public interface IEmailService
     {
         void Send(string to, string subject, string html, string from = null);
-        void SendVerificationEmail(VerificationModel vModel, User user, string origin);
+        Task SendVerificationEmail(VerificationModel vModel, User user, string origin);
         Task SendPasswordResetEmail(VerificationModel vModel, User user, string origin, ForgotPasswordRequest request);
     }
 
@@ -118,27 +118,22 @@ namespace FoosballApi
             );
         }
 
-        public void SendVerificationEmail(VerificationModel vModel, User user, string origin)
+        public async Task SendVerificationEmail(VerificationModel vModel, User user, string origin)
         {
-            string message;
-            if (!string.IsNullOrEmpty(origin))
-            {
-                message = $@"<p>Your conformation code:</p>
-                             <p>{vModel.VerificationToken}</p>";
-            }
-            else
-            {
-                message = $@"<p>Please use the below token to verify your email address with the <code>/accounts/verify-email</code> api route:</p>
-                             <p><code>{vModel.VerificationToken}</code></p>";
-            }
+            string verificationCode = $"<div style=\"background-color: #008000; padding: 10px; border-radius: 5px;\"><p style=\"font-size: 18px; color: #ffffff; text-align: center;\">{vModel.VerificationToken}</p></div>";
 
-            Send(
-                to: user.Email,
-                subject: "Foosball - Verify Email",
-                html: $@"<h4>Verify Email</h4>
-                         <p>Thanks for registering!</p>
-                         {message}"
+            string message = $@"<p>Hi {user.FirstName},</p>
+                                <p>Here is your verification code to verify your Dano email:</p>
+                                {verificationCode}
+                                <p>Regards,</p>
+                                <p>Dano Support</p>";
+
+            await SendWithApi(
+                to: "danielfrs87@gmail.com",
+                subject: "Dano Account Activation",
+                html: message
             );
         }
+
     }
 }

@@ -322,42 +322,57 @@ namespace FoosballApi.Services
 
         private async Task SaveOldRefreshTokenToDatabase(string refreshToken, DateTime expirationTime, User user)
         {
-            using (var conn = new NpgsqlConnection(_connectionString))
+            using var conn = new NpgsqlConnection(_connectionString);
+
+            if (user.RefreshToken != null)
             {
                 await conn.ExecuteAsync(
-                     @"INSERT INTO old_refresh_tokens (refresh_token, refresh_token_expiry_time, fk_user_id, fk_organisation_id, inserted_at)
-                            VALUES (@refresh_token, @refresh_token_expiry_time, @fk_user_id, @fk_organisation_id, @inserted_at)",
-                            new { 
-                                refresh_token = user.RefreshToken, 
-                                refresh_token_expiry_time = user.RefreshTokenExpiryTime, 
-                                fk_user_id = user.Id, 
+                    @"INSERT INTO old_refresh_tokens (refresh_token, refresh_token_expiry_time, fk_user_id, fk_organisation_id, inserted_at)
+                                VALUES (@refresh_token, @refresh_token_expiry_time, @fk_user_id, @fk_organisation_id, @inserted_at)",
+                            new
+                            {
+                                refresh_token = user.RefreshToken,
+                                refresh_token_expiry_time = user.RefreshTokenExpiryTime,
+                                fk_user_id = user.Id,
                                 fk_organisation_id = user.CurrentOrganisationId,
-                                inserted_at = DateTime.Now });
+                                inserted_at = DateTime.Now
+                            });
             }
         }
 
 
         private async Task<User> GetUserById(int id)
         {
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                var user = await conn.QueryFirstOrDefaultAsync<User>(
-                    @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+            using var conn = new NpgsqlConnection(_connectionString);
+            var user = await conn.QueryFirstOrDefaultAsync<User>(
+                @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
                     u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
                     u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime,
                     o.is_deleted as IsDeleted
                     FROM Users u
                     JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
                     WHERE u.id = @id",
-                    new { id });
-                return user;
-            }
+                new { id });
+            return user;
+        }
+
+        private async Task<User> GetUserWithoutJoin(int id)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var user = await conn.QueryFirstOrDefaultAsync<User>(
+                @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl,
+                    u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime
+                    FROM Users u
+                    WHERE u.id = @id",
+                new { id });
+            return user;
         }
 
         public async Task<bool> SaveRefreshTokenToDatabase(string refreshToken, int userId)
         {
             bool result = false;
-            var user = await GetUserById(userId);
+            var user = await GetUserWithoutJoin(userId);
             await SaveOldRefreshTokenToDatabase(user.RefreshToken, user.RefreshTokenExpiryTime, user);
             using (var conn = new NpgsqlConnection(_connectionString))
             {

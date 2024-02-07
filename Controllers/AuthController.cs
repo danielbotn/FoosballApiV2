@@ -64,7 +64,7 @@ namespace FoosballApi.Controllers
 
         [HttpPost("register")]
         [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status201Created)]
-        public ActionResult<UserReadDto> CreateUser(UserCreateDto userCreateDto)
+        public async Task<ActionResult> CreateUser(UserCreateDto userCreateDto)
         {
             try
             {
@@ -80,7 +80,7 @@ namespace FoosballApi.Controllers
 
                 var userReadDto = _mapper.Map<UserReadDto>(tmpUser);
 
-                _emailService.SendVerificationEmail(vModel, tmpUser, Request.Headers["origin"]);
+                await _emailService.SendVerificationEmail(vModel, tmpUser, Request.Headers["origin"]);
 
                 return CreatedAtRoute(nameof(UsersController.GetUserById), new { Id = userReadDto.Id }, userReadDto);
             }

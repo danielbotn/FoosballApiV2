@@ -66,7 +66,7 @@ namespace FoosballApi.Services
                     u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime,
                     o.is_deleted as IsDeleted
                     FROM Users u
-                    JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
+                    LEFT JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
                     WHERE u.id = @id",
                     new { id });
                 return user;
