@@ -27,7 +27,7 @@ namespace FoosballApi.Services
         ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
         Task<(bool, int)> IsOldRefreshTokenInDatabase(User user, string refreshToken);
         Task DeleteOldRefreshTokenById(int id);
-        Task DeleteOldTokens(int organisationId);
+        Task DeleteOldTokens(int? organisationId);
     }
 
     public class AuthService : IAuthService
@@ -449,14 +449,16 @@ namespace FoosballApi.Services
             }
         }
 
-        public async Task DeleteOldTokens(int organisationId)
+        public async Task DeleteOldTokens(int? organisationId)
         {
-            using (var conn = new NpgsqlConnection(_connectionString))
+            using var conn = new NpgsqlConnection(_connectionString);
+
+            if (organisationId is not null)
             {
                 var expiryTime = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds(); // calculate the expiry time as 24 hours ago in UTC time
                 await conn.ExecuteAsync(
                     @"DELETE FROM old_refresh_tokens 
-                    WHERE fk_organisation_id = @fk_organisation_id AND refresh_token_expiry_time < to_timestamp(@expiry_time)",
+                        WHERE fk_organisation_id = @fk_organisation_id AND refresh_token_expiry_time < to_timestamp(@expiry_time)",
                     new { fk_organisation_id = organisationId, expiry_time = expiryTime });
             }
         }

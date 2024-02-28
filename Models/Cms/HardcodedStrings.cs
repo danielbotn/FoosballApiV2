@@ -107,5 +107,8 @@ namespace FoosballApi.Models.Cms
         public string standings { get; set; }
         public string fixtures { get; set; }
         public string notStarted { get; set; }
+        public string welcomeTextBody { get; set; }
+        public string welcomeTextButton { get; set; }
+        public string welcomeTextHeadline { get; set; }
     }
 }

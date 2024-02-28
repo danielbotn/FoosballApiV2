@@ -152,7 +152,11 @@ namespace FoosballApi.Controllers
                     }
                     
                 }
-                await _authService.DeleteOldTokens((int)user.CurrentOrganisationId);
+
+                if (user.CurrentOrganisationId is not null)
+                {
+                    await _authService.DeleteOldTokens((int)user.CurrentOrganisationId);
+                }
 
                 string tokenString = _authService.CreateToken(user);
                 string newRefreshToken = _authService.GenerateRefreshToken();
