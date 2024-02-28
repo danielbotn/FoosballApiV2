@@ -37,6 +37,12 @@ namespace FoosballApi.Controllers
             try
             {
                 string currentOrganisationId = User.FindFirst("CurrentOrganisationId").Value;
+
+                if (string.IsNullOrEmpty(currentOrganisationId)) 
+                {
+                    return Ok(Array.Empty<UserReadJoinDto>());
+                }
+
                 var allUsers = await _userService.GetAllUsers(int.Parse(currentOrganisationId));
 
                 return Ok(_mapper.Map<IEnumerable<UserReadJoinDto>>(allUsers));
