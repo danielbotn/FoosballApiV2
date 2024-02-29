@@ -111,5 +111,7 @@ namespace FoosballApi.Models.Cms
         public string welcomeTextButton { get; set; }
         public string welcomeTextHeadline { get; set; }
         public string noUsersExists { get; set; }
+        public string noData { get; set; }
+        public string noOrganisation { get; set; }
     }
 }
