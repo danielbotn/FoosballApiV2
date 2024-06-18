@@ -14,6 +14,7 @@ namespace FoosballApi
         void Send(string to, string subject, string html, string from = null);
         Task SendVerificationEmail(VerificationModel vModel, User user, string origin);
         Task SendPasswordResetEmail(VerificationModel vModel, User user, string origin, ForgotPasswordRequest request);
+        Task SendVerificationChangePasswordEmail(VerificationModel vModel, User user);
     }
 
     public class EmailData
@@ -118,6 +119,24 @@ namespace FoosballApi
             );
         }
 
+        public async Task SendVerificationChangePasswordEmail(VerificationModel vModel, User user)
+        {
+            string verificationCode = $"<div style=\"background-color: #008000; padding: 10px; border-radius: 5px;\"><p style=\"font-size: 18px; color: #ffffff; text-align: center;\">{vModel.ChangePasswordVerificationToken}</p></div>";
+
+            string message = $@"<p>Hi {user.FirstName},</p>
+                                <p>Here is your verification code to change your password:</p>
+                                <p>Hurry up, this code will expire in one day</p>
+                                {verificationCode}
+                                <p>Regards,</p>
+                                <p>Dano Support</p>";
+
+            await SendWithApi(
+                to: "danielfrs87@gmail.com", // This need to change in production
+                subject: "Dano Update Password",
+                html: message
+            );
+        }
+
         public async Task SendVerificationEmail(VerificationModel vModel, User user, string origin)
         {
             string verificationCode = $"<div style=\"background-color: #008000; padding: 10px; border-radius: 5px;\"><p style=\"font-size: 18px; color: #ffffff; text-align: center;\">{vModel.VerificationToken}</p></div>";
@@ -129,7 +148,7 @@ namespace FoosballApi
                                 <p>Dano Support</p>";
 
             await SendWithApi(
-                to: "danielfrs87@gmail.com",
+                to: "danielfrs87@gmail.com", // This need to change in production
                 subject: "Dano Account Activation",
                 html: message
             );

@@ -202,6 +202,49 @@ namespace FoosballApi.Controllers
             }
         }
 
+        [HttpPut("update-password")]
+        [ProducesResponseType(typeof(UpdatePasswordResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdatePassword(UpdatePasswordRequest model)
+        {
+            try
+            {
+                string userId = User.Identity.Name;
+                var verification = await _authService.UpdatePassword(model, int.Parse(userId));
+                var user = await _userService.GetUserById(int.Parse(userId));
+                
+                bool emailSent = false;
+
+                if (model.VerficationCode == null && verification.VerificationCodeCreated)
+                {
+                    if (verification.VerificationModel.ChangePasswordTokenExpires < DateTime.UtcNow)
+                    {
+                        // Token is expired, return Bad Request
+                        return StatusCode(StatusCodes.Status400BadRequest, "Verification token has expired.");
+                    }
+
+                    await _emailService.SendVerificationChangePasswordEmail(verification.VerificationModel, user);
+                    emailSent = true;
+                }
+                
+                var response = new UpdatePasswordResponse
+                {
+                    EmailSent = emailSent,
+                    VerificationCodeCreated = verification.VerificationCodeCreated,
+                    PasswordUpdated = verification.PasswordUpdated
+                };
+
+                return Ok(response);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+
+
         // [HttpPost("reset-password")]
         // [ProducesResponseType(typeof(UserForgotPassword), StatusCodes.Status200OK)]
         // public IActionResult ResetPassword(ResetPasswordRequest model)

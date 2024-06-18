@@ -18,6 +18,7 @@ namespace FoosballApi.Services
         // bool VerifyEmail(string token);
         Task<bool> VerifyCode(string token, int userId);
         Task<VerificationModel> ForgotPassword(ForgotPasswordRequest model, string origin);
+        Task<UpdatePasswordModel> UpdatePassword(UpdatePasswordRequest model, int userId);
         // bool SaveChanges();
         VerificationModel AddVerificationInfo(User user, string origin);
         // void ResetPassword(ResetPasswordRequest model);
@@ -167,6 +168,19 @@ namespace FoosballApi.Services
                     FROM Verifications WHERE user_id = @userId AND verification_token = @token",
                     new { userId, token });
             }
+
+        }
+
+        private async Task<VerificationModel> GetVerificationModelById(int userId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            return await conn.QueryFirstOrDefaultAsync<VerificationModel>(
+                @"SELECT id, user_id as UserId, verification_token as VerificationToken, 
+                    password_reset_token as PasswordResetToken, has_verified as HasVerified,
+                    change_password_token as ChangePasswordToken, change_password_token_expires
+                    AS ChangePasswordTokenExpires, change_password_verification_token as ChangePasswordVerificationToken
+                    FROM Verifications WHERE user_id = @userId",
+                new { userId });
 
         }
 
@@ -462,5 +476,114 @@ namespace FoosballApi.Services
                     new { fk_organisation_id = organisationId, expiry_time = expiryTime });
             }
         }
+
+        private async Task<bool> UpdateVerificationChangePasswordFields(int userId)
+        {
+            bool result = true;
+            using var conn = new NpgsqlConnection(_connectionString);
+
+            var data = await conn.ExecuteAsync(
+                @"UPDATE verifications 
+                SET 
+                    change_password_verification_token = @change_password_verification_token,
+                    change_password_token_expires = @change_password_token_expires::timestamp without time zone,
+                    change_password_token = @change_password_token
+                WHERE 
+                    user_id = @user_id",
+                new
+                {
+                    change_password_verification_token = GetRandomTokenString(),
+                    change_password_token_expires = DateTime.UtcNow.AddDays(1),
+                    change_password_token = RandomTokenString(),
+                    user_id = userId
+                });
+
+            if (data == 0)
+                result = false;
+            
+            return result;
+        }
+
+        public async Task<bool> UpdateUserPassword(string password, int userId)
+        {
+            bool result = false;
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                int updateSuccessfull = await conn.ExecuteAsync(
+                    @"UPDATE users 
+                    SET password = @password
+                    WHERE id = @id",
+                    new { 
+                        password = passwordHash,
+                        id = userId
+                     });
+                
+                if (updateSuccessfull > 0)
+                    result = true;
+            }
+
+            return result;
+        }
+
+       private async Task CleanVerificationAfterUpdate(int userId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+
+            // Define nullable values
+            DateTime? changePasswordTokenExpires = null;
+            string changePasswordToken = null;
+            string changePasswordVerificationToken = null;
+
+            int updateSuccessful = await conn.ExecuteAsync(
+                @"UPDATE verifications 
+                    SET change_password_token_expires = @change_password_token_expires,
+                        change_password_token = @change_password_token,
+                        change_password_verification_token = @change_password_verification_token
+                    WHERE user_id = @user_id",
+                new
+                {
+                    change_password_token_expires = changePasswordTokenExpires,
+                    change_password_token = changePasswordToken,
+                    change_password_verification_token = changePasswordVerificationToken,
+                    user_id = userId
+                });
+        }
+
+
+
+        public async Task<UpdatePasswordModel> UpdatePassword(UpdatePasswordRequest model, int userId)
+        {
+            UpdatePasswordModel result = new();
+            if (model.VerficationCode == null)
+            {
+                // send email with verification code
+                // email is sent later in the controller
+                bool databaseUpdated = await UpdateVerificationChangePasswordFields(userId);
+
+                if (databaseUpdated)
+                {
+                    var verification = await GetVerificationModelById(userId);
+                    result.VerificationModel = verification;
+                    result.VerificationCodeCreated = true;
+                }
+            }
+            else
+            {
+                // chech code and update password
+                var verification = await GetVerificationModelById(userId);
+
+                if (model.VerficationCode == verification.ChangePasswordVerificationToken && model.Password == model.ConfirmPassword)
+                {
+                    // update database 
+                    await UpdateUserPassword(model.Password, userId);
+                    result.VerificationModel = verification;
+                    result.PasswordUpdated = true;
+                    await CleanVerificationAfterUpdate(userId);
+                }
+            }
+            return result;
+        }
+
     }
 }

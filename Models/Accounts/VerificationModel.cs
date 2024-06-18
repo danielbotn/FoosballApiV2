@@ -18,5 +18,9 @@ namespace FoosballApi
         [Required]
         public bool HasVerified { get; set; }
 
+        public string ChangePasswordToken { get; set; } = null;
+        public DateTime? ChangePasswordTokenExpires { get; set; } = null;
+        public string ChangePasswordVerificationToken { get; set; } = null;
+
     }
 }

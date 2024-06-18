@@ -566,3 +566,12 @@ fk_organisation_id INTEGER REFERENCES organisations(id)
 
 ALTER TABLE old_refresh_tokens
 ADD inserted_at timestamp
+
+ALTER TABLE verifications
+ADD change_password_token text;
+
+ALTER TABLE verifications
+ADD change_password_token_expires timestamp without time zone;
+
+ALTER TABLE verifications
+ADD COLUMN change_password_verification_token text
