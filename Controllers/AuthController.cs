@@ -216,7 +216,7 @@ namespace FoosballApi.Controllers
                 
                 bool emailSent = false;
 
-                if (model.VerficationCode == null && verification.VerificationCodeCreated)
+                if (model.VerificationCode == null && verification.VerificationCodeCreated)
                 {
                     if (verification.VerificationModel.ChangePasswordTokenExpires < DateTime.UtcNow)
                     {

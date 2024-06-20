@@ -11,6 +11,6 @@ namespace FoosballApi.Models.Accounts
         [Compare("Password")]
         public string ConfirmPassword { get; set; }
         
-        public string VerficationCode { get; set; } = null;
+        public string VerificationCode { get; set; } = null;
     }
 }

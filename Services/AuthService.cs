@@ -555,7 +555,7 @@ namespace FoosballApi.Services
         public async Task<UpdatePasswordModel> UpdatePassword(UpdatePasswordRequest model, int userId)
         {
             UpdatePasswordModel result = new();
-            if (model.VerficationCode == null)
+            if (model.VerificationCode == null)
             {
                 // send email with verification code
                 // email is sent later in the controller
@@ -573,7 +573,7 @@ namespace FoosballApi.Services
                 // chech code and update password
                 var verification = await GetVerificationModelById(userId);
 
-                if (model.VerficationCode == verification.ChangePasswordVerificationToken && model.Password == model.ConfirmPassword)
+                if (model.VerificationCode == verification.ChangePasswordVerificationToken && model.Password == model.ConfirmPassword)
                 {
                     // update database 
                     await UpdateUserPassword(model.Password, userId);

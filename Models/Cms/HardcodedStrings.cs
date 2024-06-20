@@ -113,5 +113,12 @@ namespace FoosballApi.Models.Cms
         public string noUsersExists { get; set; }
         public string noData { get; set; }
         public string noOrganisation { get; set; }
+        public string pleaseCheckYourInbox { get; set; }
+        public string passwordSuccessfullyChanged { get; set; }
+        public string enterNewPassword { get; set; }
+        public string newPassword { get; set; }
+        public string pleaseEnterVerificationCode { get; set; }
+        public string submitPasswordButtonText { get; set; }
+        public string submitVerificationButtonText { get; set; }
     }
 }
