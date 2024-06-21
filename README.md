@@ -575,3 +575,6 @@ ADD change_password_token_expires timestamp without time zone;
 
 ALTER TABLE verifications
 ADD COLUMN change_password_verification_token text
+
+ALTER TABLE organisations
+ADD COLUMN slack_webhook_url text

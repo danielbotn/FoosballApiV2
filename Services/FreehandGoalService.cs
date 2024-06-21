@@ -1,5 +1,7 @@
 using Dapper;
 using FoosballApi.Dtos.Goals;
+using FoosballApi.Helpers;
+using FoosballApi.Models;
 using FoosballApi.Models.Goals;
 using FoosballApi.Models.Matches;
 using Npgsql;
@@ -212,6 +214,120 @@ namespace FoosballApi.Services
             return result;
         }
 
+        // used for slack message
+        private async Task<User> GetUserById(int id)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var user = await conn.QueryFirstOrDefaultAsync<User>(
+                @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
+                    u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime,
+                    o.is_deleted as IsDeleted
+                    FROM Users u
+                    LEFT JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
+                    WHERE u.id = @id",
+                new { id });
+            return user;
+        }
+
+        // curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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
+        public async Task SendSlackMessage(FreehandMatchModel match, int userId)
+        {
+            HttpCaller httpCaller = new();
+            string _webhookUrl = "";
+            User player = await GetUserById(userId);
+            if (player != null && player.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    _webhookUrl = data.SlackWebhookUrl;
+                }
+            }
+
+            User playerOne = await GetUserById(match.PlayerOneId);
+            User playerTwo = await GetUserById(match.PlayerTwoId);
+
+            string winnerName;
+            string loserName;
+            int winnerScore;
+            int loserScore;
+
+            if (match.PlayerOneScore > match.PlayerTwoScore)
+            {
+                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
+                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
+                winnerScore = match.PlayerOneScore;
+                loserScore = match.PlayerTwoScore;
+            }
+            else
+            {
+                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
+                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
+                winnerScore = match.PlayerTwoScore;
+                loserScore = match.PlayerOneScore;
+            }
+
+            TimeSpan matchDuration = match.EndTime.HasValue ? match.EndTime.Value - match.StartTime : TimeSpan.Zero;
+
+            string formattedDuration;
+            if (matchDuration.TotalMinutes < 1)
+            {
+                formattedDuration = $"{matchDuration.Seconds} seconds";
+            }
+            else if (matchDuration.TotalHours < 1)
+            {
+                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
+            }
+            else
+            {
+                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
+            }
+
+            var message = new
+            {
+                text = $"Game Results:\n\n" +
+                    $"Winner: {winnerName}\n" +
+                    $"Loser: {loserName}\n" +
+                    $"Final Score: {winnerScore} - {loserScore}\n" +
+                    $"Match Duration: {formattedDuration}"
+            };
+
+            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
+            await httpCaller.MakeApiCall(bodyParam, _webhookUrl);
+        }
+
+        private async Task<OrganisationModel> GetOrganisationById(int id)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
+                @"SELECT id as Id, name as Name, created_at as CreatedAt,
+                    organisation_type as OrganisationType, organisation_code AS OrganisationCode,
+                    slack_webhook_url as SlackWebhookUrl
+                    FROM organisations
+                    WHERE id = @id",
+            new { id = id });
+            return organisation;
+        }
+
+        private async Task<bool> IsSlackIntegrated(int userId)
+        {
+            bool result = false;
+            User playerOne = await GetUserById(userId);
+            if (playerOne != null && playerOne.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await GetOrganisationById(playerOne.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
         private async void UpdateFreehandMatchScore(int userId, FreehandGoalCreateDto freehandGoalCreateDto)
         {
             var fmm = await GetFreehandMatchById(freehandGoalCreateDto.MatchId);
@@ -229,6 +345,12 @@ namespace FoosballApi.Services
             {
                 fmm.EndTime = DateTime.Now;
                 fmm.GameFinished = true;
+
+                // Send slack message
+                if (await IsSlackIntegrated(userId))
+                {
+                    await SendSlackMessage(fmm, userId);
+                }
             }
 
             using (var conn = new NpgsqlConnection(_connectionString))
