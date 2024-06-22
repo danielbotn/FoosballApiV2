@@ -4,6 +4,7 @@ using FoosballApi.Helpers;
 using FoosballApi.Models;
 using FoosballApi.Models.Goals;
 using FoosballApi.Models.Matches;
+using Hangfire;
 using Npgsql;
 
 namespace FoosballApi.Services
@@ -328,6 +329,12 @@ namespace FoosballApi.Services
             return result;
         }
 
+        public async Task SendSlackMessageIfIntegrated(FreehandMatchModel match, int userId)
+        {
+            await Task.Delay(1);
+            BackgroundJob.Enqueue(() => SendSlackMessage(match, userId));
+        }
+
         private async void UpdateFreehandMatchScore(int userId, FreehandGoalCreateDto freehandGoalCreateDto)
         {
             var fmm = await GetFreehandMatchById(freehandGoalCreateDto.MatchId);
@@ -349,7 +356,7 @@ namespace FoosballApi.Services
                 // Send slack message
                 if (await IsSlackIntegrated(userId))
                 {
-                    await SendSlackMessage(fmm, userId);
+                    BackgroundJob.Enqueue(() => SendSlackMessageIfIntegrated(fmm, userId));
                 }
             }
 

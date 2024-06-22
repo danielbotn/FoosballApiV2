@@ -1,6 +1,8 @@
 using System.Text;
 using FoosballApi;
 using FoosballApi.Services;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -68,6 +70,18 @@ builder.Services.AddControllers().AddNewtonsoftJson(s =>
                 s.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             });
 
+string _connectionString = "";
+#if DEBUG
+    _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
+#else
+    _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
+#endif
+
+builder.Services.AddHangfire(config =>
+    config.UsePostgreSqlStorage(c =>
+        c.UseNpgsqlConnection(_connectionString)));
+
+
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -134,6 +148,9 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseHangfireServer();
+app.UseHangfireDashboard();
 
 app.MapControllers();
 

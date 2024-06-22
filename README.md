@@ -578,3 +578,5 @@ ADD COLUMN change_password_verification_token text
 
 ALTER TABLE organisations
 ADD COLUMN slack_webhook_url text
+
+ollama pull phi3:mini
