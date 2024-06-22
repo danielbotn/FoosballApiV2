@@ -6,6 +6,8 @@ using FoosballApi.Models.Goals;
 using FoosballApi.Models.Matches;
 using Hangfire;
 using Npgsql;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace FoosballApi.Services
 {
@@ -231,6 +233,38 @@ namespace FoosballApi.Services
             return user;
         }
 
+        private async Task<string> GetAIMessage()
+        {
+            string result = "";
+            string userPrompt = "Josh Adams and Niklas Berg played a foosball match. The match ended 10 - 0 for Niklas. Write a newspaper headline for the match";
+            // Create a kernel with OpenAI chat completion
+            #pragma warning disable SKEXP0010
+            Kernel kernel = Kernel.CreateBuilder()
+                                .AddOpenAIChatCompletion(
+                                    modelId: "phi3:mini",
+                                    endpoint: new Uri("http://localhost:11434"),
+                                    apiKey: "")
+                                .Build();
+
+            var aiChatService = kernel.GetRequiredService<IChatCompletionService>();
+            var chatHistory = new ChatHistory();
+
+            chatHistory.Add(new ChatMessageContent(AuthorRole.User, userPrompt));
+
+            // Stream the AI response and add to chat history
+           
+            var response = "";
+            await foreach(var item in 
+                aiChatService.GetStreamingChatMessageContentsAsync(chatHistory))
+            {
+                Console.Write(item.Content);
+                result += item.Content;
+            }
+            chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, response));
+
+            return result;
+        }
+
         // curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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
         public async Task SendSlackMessage(FreehandMatchModel match, int userId)
         {
@@ -289,9 +323,10 @@ namespace FoosballApi.Services
             var message = new
             {
                 text = $"Game Results:\n\n" +
-                    $"Winner: {winnerName}\n" +
+                    $"Winner 22: {winnerName}\n" +
                     $"Loser: {loserName}\n" +
                     $"Final Score: {winnerScore} - {loserScore}\n" +
+                    $"Gaur 22: {await GetAIMessage()} - \n" +
                     $"Match Duration: {formattedDuration}"
             };
 
