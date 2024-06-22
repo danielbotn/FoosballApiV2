@@ -325,7 +325,7 @@ namespace FoosballApi.Services
 
             var message = new
             {
-                text = $"Game Results:\n\n" +
+                text = $"Dano Game Results:\n\n" +
                     $"{await GetAIMessage(match, playerOne, playerTwo)}  \n" +
                     "\n" +
                     $"Winner: {winnerName}\n" +
