@@ -233,10 +233,13 @@ namespace FoosballApi.Services
             return user;
         }
 
-        private async Task<string> GetAIMessage()
+        private async Task<string> GetAIMessage(FreehandMatchModel match, User userOne, User userTwo)
         {
             string result = "";
-            string userPrompt = "Josh Adams and Niklas Berg played a foosball match. The match ended 10 - 0 for Niklas. Write a newspaper headline for the match";
+            string userPrompt = $"{userOne.FirstName} ${userOne.LastName} and ${userTwo.FirstName} ${userTwo.LastName} played a foosball match. " +
+                $"${userOne.FirstName}  ${userOne.LastName} scored ${match.PlayerOneScore} goals and " +
+                $"${userTwo.FirstName} ${userTwo.LastName} scored ${match.PlayerTwoScore} goals. " +
+                $"Write a newspaper headline for the match. I only want one sentence. Don't give me options or anything other then the headline.";
             // Create a kernel with OpenAI chat completion
             #pragma warning disable SKEXP0010
             Kernel kernel = Kernel.CreateBuilder()
@@ -323,10 +326,11 @@ namespace FoosballApi.Services
             var message = new
             {
                 text = $"Game Results:\n\n" +
-                    $"Winner 22: {winnerName}\n" +
+                    $"{await GetAIMessage(match, playerOne, playerTwo)}  \n" +
+                    "\n" +
+                    $"Winner: {winnerName}\n" +
                     $"Loser: {loserName}\n" +
                     $"Final Score: {winnerScore} - {loserScore}\n" +
-                    $"Gaur 22: {await GetAIMessage()} - \n" +
                     $"Match Duration: {formattedDuration}"
             };
 
