@@ -19,6 +19,18 @@ namespace FoosballApi.Helpers
             return result;
         }
 
+        public async Task<string> MakeApiCallSlack(string bodyParam, string url)
+        {
+            HttpClient client = new();
+            
+            HttpContent requestContent = new StringContent(bodyParam, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(url, requestContent);
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadAsStringAsync();
+            return result;   
+        }
+
+
         public async Task<string> CallSenderApi(string bodyParam, string url)
         {
             HttpClient client = new();

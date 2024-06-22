@@ -296,7 +296,7 @@ namespace FoosballApi.Services
             };
 
             string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
-            await httpCaller.MakeApiCall(bodyParam, _webhookUrl);
+            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
         }
 
         private async Task<OrganisationModel> GetOrganisationById(int id)
