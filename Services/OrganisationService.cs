@@ -39,7 +39,8 @@ namespace FoosballApi.Services
             {
                 var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
                     @"SELECT id as Id, name as Name, created_at as CreatedAt,
-                    organisation_type as OrganisationType, organisation_code AS OrganisationCode
+                    organisation_type as OrganisationType, organisation_code AS OrganisationCode,
+                    slack_webhook_url as SlackWebhookUrl
                     FROM organisations
                     WHERE id = @id",
                 new { id = id });
@@ -134,13 +135,15 @@ namespace FoosballApi.Services
             {
                 conn.Execute(
                     @"UPDATE organisations
-                    SET name = @name, created_at = @created_at, organisation_type = @organisation_type
+                    SET name = @name, created_at = @created_at, organisation_type = @organisation_type,
+                    slack_webhook_url = @slack_webhook_url
                     WHERE id = @id",
                 new 
                 { 
                     name = organisation.Name, 
                     created_at = organisation.CreatedAt,
                     organisation_type = organisation_type,
+                    slack_webhook_url = organisation.SlackWebhookUrl,
                     id = organisation.Id
                 });
             }

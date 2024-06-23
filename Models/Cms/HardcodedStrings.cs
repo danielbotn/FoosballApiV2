@@ -120,5 +120,8 @@ namespace FoosballApi.Models.Cms
         public string pleaseEnterVerificationCode { get; set; }
         public string submitPasswordButtonText { get; set; }
         public string submitVerificationButtonText { get; set; }
+        public string enterSlackWebhook { get; set; }
+        public string slackWebhook { get; set; }
+        public string save { get; set; }
     }
 }
