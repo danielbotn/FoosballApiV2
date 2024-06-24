@@ -395,7 +395,7 @@ namespace FoosballApi.Services
                 // Send slack message
                 if (await IsSlackIntegrated(userId))
                 {
-                    BackgroundJob.Enqueue(() => SendSlackMessageIfIntegrated(fmm, userId));
+                    await SendSlackMessageIfIntegrated(fmm, userId);
                 }
             }
 
