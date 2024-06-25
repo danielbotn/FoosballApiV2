@@ -1,8 +1,16 @@
 using Dapper;
+using FoosballApi.Helpers;
+using FoosballApi.Models;
 using FoosballApi.Models.Leagues;
 using FoosballApi.Models.Matches;
 using FoosballApi.Models.SingleLeagueGoals;
+using Hangfire;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel;
 using Npgsql;
+using System.Runtime.Intrinsics.X86;
+using System.Text;
+using FoosballApi.Models.Other;
 
 namespace FoosballApi.Services
 {
@@ -21,13 +29,15 @@ namespace FoosballApi.Services
     public class SingleLeagueGoalService : ISingleLeagueGoalService
     {
         private string _connectionString { get; }
-        public SingleLeagueGoalService()
+        private readonly ISingleLeagueMatchService _singleLeagueMatchService;
+        public SingleLeagueGoalService(ISingleLeagueMatchService singleLeagueMatchService)
         {
-            #if DEBUG
-                _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
-            #else
+#if DEBUG
+            _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
+#else
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
-            #endif
+#endif
+            _singleLeagueMatchService = singleLeagueMatchService;
         }
 
         public bool CheckCreatePermission(int userId, SingleLeagueCreateModel singleLeagueCreateModel)
@@ -52,16 +62,16 @@ namespace FoosballApi.Services
                     FROM single_league_goals
                     WHERE id = @id",
                 new { id = goalId });
-                
+
                 return goal;
             }
         }
 
-        private async Task<SingleLeagueMatchModel > GetMatchQuery(int matchId)
+        private async Task<SingleLeagueMatchModel> GetMatchQuery(int matchId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var match = await conn.QueryFirstAsync<SingleLeagueMatchModel >(
+                var match = await conn.QueryFirstAsync<SingleLeagueMatchModel>(
                     @"SELECT id as Id, player_one as PlayerOne, player_two as PlayerTwo,
                     league_id as LeagueId, start_time as StartTime, end_time as EndTime,
                     player_one_score as PlayerOneScore, player_two_score as PlayerTwoScore,
@@ -70,7 +80,7 @@ namespace FoosballApi.Services
                     FROM single_league_matches
                     WHERE id = @id",
                 new { id = matchId });
-                
+
                 return match;
             }
         }
@@ -79,7 +89,7 @@ namespace FoosballApi.Services
         {
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                var players = await conn.QueryAsync<LeaguePlayersModel >(
+                var players = await conn.QueryAsync<LeaguePlayersModel>(
                     @"SELECT id as Id, user_id as UserId, league_id as LeagueId,
                     created_at as CreatedAt
                     FROM league_players
@@ -139,14 +149,14 @@ namespace FoosballApi.Services
                     opponent_id, scorer_score, opponent_score, winner_goal)
                     VALUES (@time_of_goal, @match_id, @scored_by_user_id, @opponent_id, @scorer_score, @opponent_score, @winner_goal)
                     RETURNING id",
-                    new 
-                    { 
-                        time_of_goal = now, 
-                        match_id = singleLeagueCreateMode.MatchId, 
-                        scored_by_user_id = singleLeagueCreateMode.ScoredByUserId, 
+                    new
+                    {
+                        time_of_goal = now,
+                        match_id = singleLeagueCreateMode.MatchId,
+                        scored_by_user_id = singleLeagueCreateMode.ScoredByUserId,
                         opponent_id = singleLeagueCreateMode.OpponentId,
                         scorer_score = singleLeagueCreateMode.ScorerScore,
-                        opponent_score = singleLeagueCreateMode.OpponentScore, 
+                        opponent_score = singleLeagueCreateMode.OpponentScore,
                         winner_goal = singleLeagueCreateMode.WinnerGoal
                     });
                 newGoal.Id = data;
@@ -173,8 +183,8 @@ namespace FoosballApi.Services
         public async Task UpdateSingleLeagueMatchAfterDeletedGoal(SingleLeagueGoalModelExtended deletedGoal)
         {
             SingleLeagueMatchModel match = await GetSingleLeagueMatchById(deletedGoal.MatchId);
-            
-            if (deletedGoal.ScoredByUserId == match.PlayerOne && match.PlayerOneScore > 0) 
+
+            if (deletedGoal.ScoredByUserId == match.PlayerOne && match.PlayerOneScore > 0)
             {
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
@@ -182,15 +192,16 @@ namespace FoosballApi.Services
                         @"UPDATE single_league_matches
                         SET player_one_score = @player_one_score
                         WHERE id = @id",
-                        new 
-                        {   player_one_score = match.PlayerOneScore - 1, 
+                        new
+                        {
+                            player_one_score = match.PlayerOneScore - 1,
                             id = deletedGoal.MatchId
                         });
                 }
             }
             else
             {
-                if (match.PlayerTwoScore > 0) 
+                if (match.PlayerTwoScore > 0)
                 {
                     using (var conn = new NpgsqlConnection(_connectionString))
                     {
@@ -198,13 +209,220 @@ namespace FoosballApi.Services
                             @"UPDATE single_league_matches
                             SET player_two_score = @player_two_score
                             WHERE id = @id",
-                            new 
-                            {   player_two_score = match.PlayerTwoScore - 1, 
+                            new
+                            {
+                                player_two_score = match.PlayerTwoScore - 1,
                                 id = deletedGoal.MatchId
                             });
                     }
                 }
             }
+        }
+
+        private async Task<OrganisationModel> GetOrganisationById(int id)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
+                @"SELECT id as Id, name as Name, created_at as CreatedAt,
+                    organisation_type as OrganisationType, organisation_code AS OrganisationCode,
+                    slack_webhook_url as SlackWebhookUrl
+                    FROM organisations
+                    WHERE id = @id",
+            new { id = id });
+            return organisation;
+        }
+
+        private async Task<User> GetUserById(int id)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var user = await conn.QueryFirstOrDefaultAsync<User>(
+                @"SELECT u.id, u.email, u.first_name as FirstName, u.last_name as LastName, u.created_at, 
+                    u.current_organisation_id as CurrentOrganisationId, u.photo_url as PhotoUrl , o.is_admin as IsAdmin,
+                    u.refresh_token as RefreshToken, u.refresh_token_expiry_time as RefreshTokenExpiryTime,
+                    o.is_deleted as IsDeleted
+                    FROM Users u
+                    LEFT JOIN organisation_list o ON o.user_id = u.id AND o.organisation_id = u.current_organisation_id
+                    WHERE u.id = @id",
+                new { id });
+            return user;
+        }
+
+        private async Task<bool> IsSlackIntegrated(int userId)
+        {
+            bool result = false;
+            User player = await GetUserById(userId);
+            if (player != null && player.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
+        private async static Task<string> GetAIMessage(SingleLeagueMatchModel match, User userOne, User userTwo)
+        {
+            string result = "";
+            string userPrompt = $"{userOne.FirstName} ${userOne.LastName} and ${userTwo.FirstName} ${userTwo.LastName} played a foosball match. " +
+                $"${userOne.FirstName}  ${userOne.LastName} scored ${match.PlayerOneScore} goals and " +
+                $"${userTwo.FirstName} ${userTwo.LastName} scored ${match.PlayerTwoScore} goals. " +
+                $"Write a newspaper headline for the match. I only want one sentence. Don't give me options or anything other then the headline.";
+            // Create a kernel with OpenAI chat completion
+#pragma warning disable SKEXP0010
+            Kernel kernel = Kernel.CreateBuilder()
+                                .AddOpenAIChatCompletion(
+                                    modelId: "phi3:mini",
+                                    endpoint: new Uri("http://localhost:11434"),
+                                    apiKey: "")
+                                .Build();
+
+            var aiChatService = kernel.GetRequiredService<IChatCompletionService>();
+            var chatHistory = new ChatHistory();
+
+            chatHistory.Add(new ChatMessageContent(AuthorRole.User, userPrompt));
+
+            // Stream the AI response and add to chat history
+
+            var response = "";
+            await foreach (var item in
+                aiChatService.GetStreamingChatMessageContentsAsync(chatHistory))
+            {
+                Console.Write(item.Content);
+                result += item.Content;
+            }
+            chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, response));
+
+            return result;
+        }
+
+
+        public async Task SendSlackMessage(SingleLeagueMatchModel match, int userId)
+        {
+            HttpCaller httpCaller = new();
+            string _webhookUrl = "";
+            User player = await GetUserById(userId);
+            if (player != null && player.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    _webhookUrl = data.SlackWebhookUrl;
+                }
+            }
+
+            if (string.IsNullOrEmpty(_webhookUrl))
+            {
+                throw new Exception("Slack webhook URL not found for the organisation.");
+            }
+
+            var message = await CreateSlackMessage(match);
+
+            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
+            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
+        }
+
+        private async Task<object> CreateSlackMessage(SingleLeagueMatchModel match)
+        {
+            User playerOne = await GetUserById(match.PlayerOne);
+            User playerTwo = await GetUserById(match.PlayerTwo);
+
+            string winnerName;
+            string loserName;
+            int winnerScore;
+            int loserScore;
+
+            if (match.PlayerOneScore > match.PlayerTwoScore)
+            {
+                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
+                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
+                winnerScore = match.PlayerOneScore.GetValueOrDefault();
+                loserScore = match.PlayerTwoScore.GetValueOrDefault();
+            }
+            else
+            {
+                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
+                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
+                winnerScore = match.PlayerTwoScore.GetValueOrDefault();
+                loserScore = match.PlayerOneScore.GetValueOrDefault();
+            }
+
+            TimeSpan matchDuration = (match.EndTime.HasValue && match.StartTime.HasValue)
+                        ? match.EndTime.Value - match.StartTime.Value
+                        : TimeSpan.Zero;
+
+            string formattedDuration;
+            if (matchDuration.TotalMinutes < 1)
+            {
+                formattedDuration = $"{matchDuration.Seconds} seconds";
+            }
+            else if (matchDuration.TotalHours < 1)
+            {
+                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
+            }
+            else
+            {
+                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
+            }
+
+            var leagueStandings = await _singleLeagueMatchService.GetSigleLeagueStandings(match.LeagueId);
+
+            // Format the league standings for Slack using Block Kit
+            var leagueStandingsText = "``` ------------ ------------ ------------ ------------ ------------ ------------ ------------\n";
+            leagueStandingsText += "| Position   | Player             | MP | MW | ML | GS | GR | Points   |\n";
+            leagueStandingsText += " ------------ ------------ ------------ ------------ ------------ ------------ ------------\n";
+
+            foreach (var pl in leagueStandings)
+            {
+                leagueStandingsText +=
+                    $"| {pl.PositionInLeague,-10} | {pl.FirstName} {pl.LastName,-18} | {pl.MatchesPlayed,2} | {pl.TotalMatchesWon,2} | {pl.TotalMatchesLost,2} | {pl.TotalGoalsScored,2} | {pl.TotalGoalsRecieved,2} | {pl.Points,8} |\n";
+            }
+
+            leagueStandingsText += " ------------ ------------ ------------ ------------ ------------ ------------ ------------ ```\n";
+
+            var message = new
+            {
+                blocks = new List<object>
+        {
+            new
+            {
+                type = "section",
+                text = new
+                {
+                    type = "mrkdwn",
+                    text = $"*Dano Game Results:*\n\n" +
+                           $"{await GetAIMessage(match, playerOne, playerTwo)}  \n\n" +
+                           $"*Winner:*\n{winnerName}\n" +
+                           $"*Loser:*\n{loserName}\n" +
+                           $"*Final Score:*\n{winnerScore} - {loserScore}\n" +
+                           $"*Match Duration:*\n{formattedDuration}\n\n"
+                }
+            },
+            new
+            {
+                type = "section",
+                text = new
+                {
+                    type = "mrkdwn",
+                    text = leagueStandingsText
+                }
+            }
+        }
+            };
+
+            return message;
+        }
+
+
+
+        public async Task SendSlackMessageIfIntegrated(SingleLeagueMatchModel match, int userId)
+        {
+            await Task.Delay(1);
+            BackgroundJob.Enqueue(() => SendSlackMessage(match, userId));
         }
 
         public async Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal)
@@ -219,43 +437,56 @@ namespace FoosballApi.Services
             DateTime? startTime = GetStartTime(match);
             DateTime? endTime = GetEndTime(goal, match);
 
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                await conn.ExecuteAsync(
-                    @"UPDATE single_league_matches 
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.ExecuteAsync(
+                @"UPDATE single_league_matches 
                     SET player_one_score = @player_one_score, 
                     player_two_score = @player_two_score,
                     match_ended = @match_ended,
                     start_time = @start_time,
                     end_time = @end_time
                     WHERE id = @id",
-                    new { 
-                        player_one_score = playerOneScore,
-                        player_two_score = playerTwoScore,
-                        match_ended = matchEnded,
-                        start_time = startTime,
-                        end_time = endTime,
-                        id = goal.MatchId
-                    });
+                new
+                {
+                    player_one_score = playerOneScore,
+                    player_two_score = playerTwoScore,
+                    match_ended = matchEnded,
+                    start_time = startTime,
+                    end_time = endTime,
+                    id = goal.MatchId
+                });
+
+            if (matchEnded)
+            {
+                //check slack integration and send slack message
+                if (await IsSlackIntegrated(goal.ScoredByUserId))
+                {
+                    SingleLeagueMatchModel matchUpdated = await GetSingleLeagueMatchById(goal.MatchId);
+                    await SendSlackMessageIfIntegrated(matchUpdated, goal.ScoredByUserId);
+                }
             }
         }
 
         private int GetPlayerOneScore(SingleLeagueGoalModel goal, SingleLeagueMatchModel match)
         {
-            if (goal.ScoredByUserId == match.PlayerOne) {
+            if (goal.ScoredByUserId == match.PlayerOne)
+            {
                 return goal.ScorerScore;
             }
-            else {
+            else
+            {
                 return goal.OpponentScore;
             }
         }
 
         private int GetPlayerTwoScore(SingleLeagueGoalModel goal, SingleLeagueMatchModel match)
         {
-            if (goal.ScoredByUserId == match.PlayerOne) {
+            if (goal.ScoredByUserId == match.PlayerOne)
+            {
                 return goal.OpponentScore;
             }
-            else {
+            else
+            {
                 return goal.ScorerScore;
             }
         }
@@ -271,7 +502,7 @@ namespace FoosballApi.Services
             {
                 return DateTime.Now;
             }
-            else 
+            else
             {
                 return match.StartTime;
             }
@@ -283,7 +514,7 @@ namespace FoosballApi.Services
             {
                 return DateTime.Now;
             }
-            else 
+            else
             {
                 return match.EndTime;
             }
@@ -301,7 +532,7 @@ namespace FoosballApi.Services
                     FROM single_league_goals
                     WHERE match_id = @match_id",
                 new { match_id = matchId });
-                
+
                 return goals.ToList();
             }
         }
@@ -384,7 +615,7 @@ namespace FoosballApi.Services
         public async Task<IEnumerable<SingleLeagueGoalModelExtended>> GetAllSingleLeagueGoalsByMatchId(int matchId)
         {
             var query = await GetSingleLeagueGoalsByMatchIdAsList(matchId);
-            
+
             List<SingleLeagueGoalModelExtended> slgmList = new List<SingleLeagueGoalModelExtended>();
             foreach (var slgm in query)
             {
