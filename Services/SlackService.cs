@@ -66,6 +66,7 @@ namespace FoosballApi.Services
             await httpCaller.MakeApiCallSlack(jsonPayloadTwo, _webhookUrl);
         }
 
+        // Maybe we will use this in production. Seems slow
         private async static Task<string> GetAIMessage(SingleLeagueMatchModel match, User userOne, User userTwo)
         {
             string result = "";
@@ -240,8 +241,6 @@ namespace FoosballApi.Services
     public class Table
     {
         public string P { get; set; }
-
-        [AsciiHeaderName("Name of Player")]
         public string Player { get; set; }
         public string MP { get; set; }
         public string MW { get; set; }
