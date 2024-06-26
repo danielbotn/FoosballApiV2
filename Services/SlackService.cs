@@ -18,18 +18,22 @@ namespace FoosballApi.Services
         private readonly ISingleLeagueMatchService _singleLeagueMatchService;
         private readonly IUserService _userService;
         private readonly IOrganisationService _organisationService;
+        private readonly ILeagueService _leagueService;
         
 
         public SlackService(
             ISingleLeagueMatchService singleLeagueMatchService,
             IUserService userService,
-            IOrganisationService organisationService
+            IOrganisationService organisationService,
+            ILeagueService leagueService
            )
         {
             _singleLeagueMatchService = singleLeagueMatchService;
             _userService = userService;
             _organisationService = organisationService;
-           
+            _leagueService = leagueService;
+
+
         }
 
         public async Task SendSlackMessage(SingleLeagueMatchModel match, int userId)
@@ -159,8 +163,9 @@ namespace FoosballApi.Services
 
         private async Task<string>GenerateSingleLeagueTable(SingleLeagueMatchModel match)
         {
+            var leagueData = await _leagueService.GetLeagueById(match.LeagueId);
             var leagueStandings = await _singleLeagueMatchService.GetSigleLeagueStandings(match.LeagueId);
-            var ascciiTable = GenerateAsciiTable(leagueStandings.ToList());
+            var ascciiTable = leagueData.Name + "\n" + GenerateAsciiTable(leagueStandings.ToList());
 
             return ascciiTable;
         }
