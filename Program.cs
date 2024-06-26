@@ -136,6 +136,8 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+builder.Services.AddScoped<ISlackService, SlackService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

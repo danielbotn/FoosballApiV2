@@ -30,14 +30,17 @@ namespace FoosballApi.Services
     {
         private string _connectionString { get; }
         private readonly ISingleLeagueMatchService _singleLeagueMatchService;
-        public SingleLeagueGoalService(ISingleLeagueMatchService singleLeagueMatchService)
+        private readonly ISlackService _slackService;
+        public SingleLeagueGoalService(ISingleLeagueMatchService singleLeagueMatchService, ISlackService slackService)
         {
-#if DEBUG
-            _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
-#else
+            #if DEBUG
+                _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
+            #else
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
-#endif
+            #endif
             _singleLeagueMatchService = singleLeagueMatchService;
+            _slackService = slackService;
+
         }
 
         public bool CheckCreatePermission(int userId, SingleLeagueCreateModel singleLeagueCreateModel)
@@ -264,165 +267,10 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private async static Task<string> GetAIMessage(SingleLeagueMatchModel match, User userOne, User userTwo)
-        {
-            string result = "";
-            string userPrompt = $"{userOne.FirstName} ${userOne.LastName} and ${userTwo.FirstName} ${userTwo.LastName} played a foosball match. " +
-                $"${userOne.FirstName}  ${userOne.LastName} scored ${match.PlayerOneScore} goals and " +
-                $"${userTwo.FirstName} ${userTwo.LastName} scored ${match.PlayerTwoScore} goals. " +
-                $"Write a newspaper headline for the match. I only want one sentence. Don't give me options or anything other then the headline.";
-            // Create a kernel with OpenAI chat completion
-#pragma warning disable SKEXP0010
-            Kernel kernel = Kernel.CreateBuilder()
-                                .AddOpenAIChatCompletion(
-                                    modelId: "phi3:mini",
-                                    endpoint: new Uri("http://localhost:11434"),
-                                    apiKey: "")
-                                .Build();
-
-            var aiChatService = kernel.GetRequiredService<IChatCompletionService>();
-            var chatHistory = new ChatHistory();
-
-            chatHistory.Add(new ChatMessageContent(AuthorRole.User, userPrompt));
-
-            // Stream the AI response and add to chat history
-
-            var response = "";
-            await foreach (var item in
-                aiChatService.GetStreamingChatMessageContentsAsync(chatHistory))
-            {
-                Console.Write(item.Content);
-                result += item.Content;
-            }
-            chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, response));
-
-            return result;
-        }
-
-
-        public async Task SendSlackMessage(SingleLeagueMatchModel match, int userId)
-        {
-            HttpCaller httpCaller = new();
-            string _webhookUrl = "";
-            User player = await GetUserById(userId);
-            if (player != null && player.CurrentOrganisationId != null)
-            {
-                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
-                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
-                {
-                    _webhookUrl = data.SlackWebhookUrl;
-                }
-            }
-
-            if (string.IsNullOrEmpty(_webhookUrl))
-            {
-                throw new Exception("Slack webhook URL not found for the organisation.");
-            }
-
-            var message = await CreateSlackMessage(match);
-
-            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
-            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
-        }
-
-        private async Task<object> CreateSlackMessage(SingleLeagueMatchModel match)
-        {
-            User playerOne = await GetUserById(match.PlayerOne);
-            User playerTwo = await GetUserById(match.PlayerTwo);
-
-            string winnerName;
-            string loserName;
-            int winnerScore;
-            int loserScore;
-
-            if (match.PlayerOneScore > match.PlayerTwoScore)
-            {
-                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
-                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                winnerScore = match.PlayerOneScore.GetValueOrDefault();
-                loserScore = match.PlayerTwoScore.GetValueOrDefault();
-            }
-            else
-            {
-                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
-                winnerScore = match.PlayerTwoScore.GetValueOrDefault();
-                loserScore = match.PlayerOneScore.GetValueOrDefault();
-            }
-
-            TimeSpan matchDuration = (match.EndTime.HasValue && match.StartTime.HasValue)
-                        ? match.EndTime.Value - match.StartTime.Value
-                        : TimeSpan.Zero;
-
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
-            {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
-
-            var leagueStandings = await _singleLeagueMatchService.GetSigleLeagueStandings(match.LeagueId);
-
-            // Format the league standings for Slack using Block Kit
-            var leagueStandingsText = "``` ------------ ------------ ------------ ------------ ------------ ------------ ------------\n";
-            leagueStandingsText += "| Position   | Player             | MP | MW | ML | GS | GR | Points   |\n";
-            leagueStandingsText += " ------------ ------------ ------------ ------------ ------------ ------------ ------------\n";
-
-            foreach (var pl in leagueStandings)
-            {
-                leagueStandingsText +=
-                    $"| {pl.PositionInLeague,-10} | {pl.FirstName} {pl.LastName,-18} | {pl.MatchesPlayed,2} | {pl.TotalMatchesWon,2} | {pl.TotalMatchesLost,2} | {pl.TotalGoalsScored,2} | {pl.TotalGoalsRecieved,2} | {pl.Points,8} |\n";
-            }
-
-            leagueStandingsText += " ------------ ------------ ------------ ------------ ------------ ------------ ------------ ```\n";
-
-            var message = new
-            {
-                blocks = new List<object>
-        {
-            new
-            {
-                type = "section",
-                text = new
-                {
-                    type = "mrkdwn",
-                    text = $"*Dano Game Results:*\n\n" +
-                           $"{await GetAIMessage(match, playerOne, playerTwo)}  \n\n" +
-                           $"*Winner:*\n{winnerName}\n" +
-                           $"*Loser:*\n{loserName}\n" +
-                           $"*Final Score:*\n{winnerScore} - {loserScore}\n" +
-                           $"*Match Duration:*\n{formattedDuration}\n\n"
-                }
-            },
-            new
-            {
-                type = "section",
-                text = new
-                {
-                    type = "mrkdwn",
-                    text = leagueStandingsText
-                }
-            }
-        }
-            };
-
-            return message;
-        }
-
-
-
         public async Task SendSlackMessageIfIntegrated(SingleLeagueMatchModel match, int userId)
         {
             await Task.Delay(1);
-            BackgroundJob.Enqueue(() => SendSlackMessage(match, userId));
+            BackgroundJob.Enqueue(() => _slackService.SendSlackMessage(match, userId));
         }
 
         public async Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal)
