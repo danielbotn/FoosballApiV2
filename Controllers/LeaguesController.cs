@@ -44,7 +44,7 @@ namespace FoosballApi.Controllers
                 if (!hasAccess)
                     return Forbid();
 
-                var leagues = await _leagueService.GetLeaguesByOrganisationId(organisationId);
+                var leagues = await _leagueService.GetLeaguesByOrganisationId(organisationId, int.Parse(userId));
 
                 if (leagues == null)
                     return NotFound();

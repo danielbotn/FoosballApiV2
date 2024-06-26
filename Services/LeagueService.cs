@@ -10,7 +10,7 @@ namespace FoosballApi.Services
 {
     public interface ILeagueService
     {
-        Task<IEnumerable<LeagueModel>> GetLeaguesByOrganisationId(int organisationId);
+        Task<IEnumerable<LeagueModel>> GetLeaguesByOrganisationId(int organisationId, int userId);
         Task<bool> CheckLeagueAccess(int userId, int organisationId);
         Task<int> GetOrganisationId(int leagueId);
         Task<LeagueModel> GetLeagueById(int id);
@@ -56,19 +56,19 @@ namespace FoosballApi.Services
             return true;
         }
 
-        public async Task<IEnumerable<LeagueModel>> GetLeaguesByOrganisationId(int organisationId)
+        // We only give access to leagues that the user is part of
+        public async Task<IEnumerable<LeagueModel>> GetLeaguesByOrganisationId(int organisationId, int userId)
         {
-            using (var conn = new NpgsqlConnection(_connectionString))
-            {
-                var leagues = await conn.QueryAsync<LeagueModel>(
-                    @"SELECT id as Id, name as Name, type_of_league as TypeOfLeague,
-                    created_at as CreatedAt, up_to as UpTo, organisation_id as OrganisationId,
-                    has_league_started as HasLeagueStarted, how_many_rounds as HowManyRounds
-                    FROM leagues
-                    WHERE organisation_id = @organisation_id",
-                new { organisation_id = organisationId });
-                return leagues.ToList();
-            }
+            using var conn = new NpgsqlConnection(_connectionString);
+            var leagues = await conn.QueryAsync<LeagueModel>(
+                @"SELECT l.id as Id, l.name as Name, l.type_of_league as TypeOfLeague,
+                    l.created_at as CreatedAt, l.up_to as UpTo, l.organisation_id as OrganisationId,
+                    l.has_league_started as HasLeagueStarted, l.how_many_rounds as HowManyRounds
+                    FROM leagues l
+                    JOIN league_players lp ON l.id = lp.league_id
+                    WHERE l.organisation_id = @organisationId AND lp.user_id = @userId",
+            new { organisationId, userId });
+            return leagues.ToList();
         }
 
         public async Task<int> GetOrganisationId(int leagueId)
