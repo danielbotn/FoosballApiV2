@@ -23,14 +23,16 @@ namespace FoosballApi.Services
     public class FreehandGoalService : IFreehandGoalService
     {
         public string _connectionString { get; }
+        private readonly ISlackService _slackService;
 
-        public FreehandGoalService()
+        public FreehandGoalService(ISlackService slackService)
         {
             #if DEBUG
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
             #else
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
             #endif
+            _slackService = slackService;
         }
 
         private async Task<IEnumerable<FreehandGoalModel>> GetFreehandGoalsByMatchId(int matchId)
@@ -233,111 +235,6 @@ namespace FoosballApi.Services
             return user;
         }
 
-        private async Task<string> GetAIMessage(FreehandMatchModel match, User userOne, User userTwo)
-        {
-            string result = "";
-            string userPrompt = $"{userOne.FirstName} ${userOne.LastName} and ${userTwo.FirstName} ${userTwo.LastName} played a foosball match. " +
-                $"${userOne.FirstName}  ${userOne.LastName} scored ${match.PlayerOneScore} goals and " +
-                $"${userTwo.FirstName} ${userTwo.LastName} scored ${match.PlayerTwoScore} goals. " +
-                $"Write a newspaper headline for the match. I only want one sentence. Don't give me options or anything other then the headline.";
-            // Create a kernel with OpenAI chat completion
-            #pragma warning disable SKEXP0010
-            Kernel kernel = Kernel.CreateBuilder()
-                                .AddOpenAIChatCompletion(
-                                    modelId: "phi3:mini",
-                                    endpoint: new Uri("http://localhost:11434"),
-                                    apiKey: "")
-                                .Build();
-
-            var aiChatService = kernel.GetRequiredService<IChatCompletionService>();
-            var chatHistory = new ChatHistory();
-
-            chatHistory.Add(new ChatMessageContent(AuthorRole.User, userPrompt));
-
-            // Stream the AI response and add to chat history
-           
-            var response = "";
-            await foreach(var item in 
-                aiChatService.GetStreamingChatMessageContentsAsync(chatHistory))
-            {
-                Console.Write(item.Content);
-                result += item.Content;
-            }
-            chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, response));
-
-            return result;
-        }
-
-        // curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' https://hooks.slack.com/services/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
-        public async Task SendSlackMessage(FreehandMatchModel match, int userId)
-        {
-            HttpCaller httpCaller = new();
-            string _webhookUrl = "";
-            User player = await GetUserById(userId);
-            if (player != null && player.CurrentOrganisationId != null)
-            {
-                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
-                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
-                {
-                    _webhookUrl = data.SlackWebhookUrl;
-                }
-            }
-
-            User playerOne = await GetUserById(match.PlayerOneId);
-            User playerTwo = await GetUserById(match.PlayerTwoId);
-
-            string winnerName;
-            string loserName;
-            int winnerScore;
-            int loserScore;
-
-            if (match.PlayerOneScore > match.PlayerTwoScore)
-            {
-                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
-                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                winnerScore = match.PlayerOneScore;
-                loserScore = match.PlayerTwoScore;
-            }
-            else
-            {
-                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
-                winnerScore = match.PlayerTwoScore;
-                loserScore = match.PlayerOneScore;
-            }
-
-            TimeSpan matchDuration = match.EndTime.HasValue ? match.EndTime.Value - match.StartTime : TimeSpan.Zero;
-
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
-            {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
-
-            var message = new
-            {
-                text = $"Dano Game Results:\n\n" +
-                    $"{await GetAIMessage(match, playerOne, playerTwo)}  \n" +
-                    "\n" +
-                    $"Winner: {winnerName}\n" +
-                    $"Loser: {loserName}\n" +
-                    $"Final Score: {winnerScore} - {loserScore}\n" +
-                    $"Match Duration: {formattedDuration}"
-            };
-
-            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
-            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
-        }
-
         private async Task<OrganisationModel> GetOrganisationById(int id)
         {
             using var conn = new NpgsqlConnection(_connectionString);
@@ -371,7 +268,7 @@ namespace FoosballApi.Services
         public async Task SendSlackMessageIfIntegrated(FreehandMatchModel match, int userId)
         {
             await Task.Delay(1);
-            BackgroundJob.Enqueue(() => SendSlackMessage(match, userId));
+            BackgroundJob.Enqueue(() => _slackService.SendSlackMessageForFreehandGame(match, userId));
         }
 
         private async void UpdateFreehandMatchScore(int userId, FreehandGoalCreateDto freehandGoalCreateDto)

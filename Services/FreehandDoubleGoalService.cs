@@ -24,14 +24,17 @@ namespace FoosballApi.Services
     public class FreehandDoubleGoalService : IFreehandDoubleGoalService
     {
         public string _connectionString { get; }
+        private readonly ISlackService _slackService;
 
-        public FreehandDoubleGoalService()
+        public FreehandDoubleGoalService(ISlackService slackService)
         {
             #if DEBUG
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
             #else
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
             #endif
+
+            _slackService = slackService;
         }
 
         private async Task<FreehandDoubleGoalPermission> GetFreehandDoubleGoalPermission(int goalId, int matchId)
@@ -126,130 +129,10 @@ namespace FoosballApi.Services
             return result;
         }
 
-        private async static Task<string> GetAIMessage(FreehandDoubleMatchModel match, User playerOneTeamA, User playerTwoTeamA, User playerOneTeamB, User playerTwoTeamB)
-        {
-            string result = "";
-            string userPrompt = $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName} and " +
-                                $"{(playerTwoTeamA != null ? playerTwoTeamA.FirstName + " " + playerTwoTeamA.LastName : "N/A")} " +
-                                $"played against {playerOneTeamB.FirstName} {playerOneTeamB.LastName} and " +
-                                $"{(playerTwoTeamB != null ? playerTwoTeamB.FirstName + " " + playerTwoTeamB.LastName : "N/A")} in a foosball match. " +
-                                $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName} and " +
-                                $"{(playerTwoTeamA != null ? playerTwoTeamA.FirstName + " " + playerTwoTeamA.LastName : "N/A")} scored {match.TeamAScore} goals, " +
-                                $"while {playerOneTeamB.FirstName} {playerOneTeamB.LastName} and " +
-                                $"{(playerTwoTeamB != null ? playerTwoTeamB.FirstName + " " + playerTwoTeamB.LastName : "N/A")} scored {match.TeamBScore} goals. " +
-                                $"Write a newspaper headline for the match. I only want one sentence. Don't give me options or anything other than the headline.";
-
-            // Create a kernel with OpenAI chat completion
-            #pragma warning disable SKEXP0010
-            Kernel kernel = Kernel.CreateBuilder()
-                                .AddOpenAIChatCompletion(
-                                    modelId: "phi3:mini",
-                                    endpoint: new Uri("http://localhost:11434"),
-                                    apiKey: "")
-                                .Build();
-
-            var aiChatService = kernel.GetRequiredService<IChatCompletionService>();
-            var chatHistory = new ChatHistory();
-
-            chatHistory.Add(new ChatMessageContent(AuthorRole.User, userPrompt));
-
-            // Stream the AI response and add to chat history
-            var response = "";
-            await foreach (var item in
-                aiChatService.GetStreamingChatMessageContentsAsync(chatHistory))
-            {
-                Console.Write(item.Content);
-                result += item.Content;
-            }
-            chatHistory.Add(new ChatMessageContent(AuthorRole.Assistant, response));
-
-            return result;
-        }
-
-        public async Task SendSlackMessage(FreehandDoubleMatchModel match, int userId)
-        {
-            HttpCaller httpCaller = new();
-            string _webhookUrl = "";
-            User player = await GetUserById(userId);
-            if (player != null && player.CurrentOrganisationId != null)
-            {
-                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
-                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
-                {
-                    _webhookUrl = data.SlackWebhookUrl;
-                }
-            }
-
-            User playerOneTeamA = await GetUserById(match.PlayerOneTeamA);
-            User playerTwoTeamA = match.PlayerTwoTeamA.HasValue ? await GetUserById(match.PlayerTwoTeamA.Value) : null;
-            User playerOneTeamB = await GetUserById(match.PlayerOneTeamB);
-            User playerTwoTeamB = match.PlayerTwoTeamB.HasValue ? await GetUserById(match.PlayerTwoTeamB.Value) : null;
-
-            string winnerTeam;
-            string loserTeam;
-            int winnerScore;
-            int loserScore;
-
-            if (match.TeamAScore > match.TeamBScore)
-            {
-                winnerTeam = $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName}" +
-                    $"{(playerTwoTeamA != null ? " & " + playerTwoTeamA.FirstName + " " + playerTwoTeamA.LastName : "")}";
-                loserTeam = $"{playerOneTeamB.FirstName} {playerOneTeamB.LastName}" +
-                    $"{(playerTwoTeamB != null ? " & " + playerTwoTeamB.FirstName + " " + playerTwoTeamB.LastName : "")}";
-                winnerScore = match.TeamAScore.GetValueOrDefault();
-                loserScore = match.TeamBScore.GetValueOrDefault();
-            }
-            else
-            {
-                winnerTeam = $"{playerOneTeamB.FirstName} {playerOneTeamB.LastName}" +
-                    $"{(playerTwoTeamB != null ? " & " + playerTwoTeamB.FirstName + " " + playerTwoTeamB.LastName : "")}";
-                loserTeam = $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName}" +
-                    $"{(playerTwoTeamA != null ? " & " + playerTwoTeamA.FirstName + " " + playerTwoTeamA.LastName : "")}";
-                winnerScore = match.TeamBScore.GetValueOrDefault();
-                loserScore = match.TeamAScore.GetValueOrDefault();
-            }
-
-            TimeSpan matchDuration = TimeSpan.Zero;
-            if (match.StartTime.HasValue && match.EndTime.HasValue)
-            {
-                matchDuration = match.EndTime.Value - match.StartTime.Value;
-            }
-
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
-            {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
-
-            var message = new
-            {
-                text = $"Dano Game Results:\n\n" +
-                    $"{await GetAIMessage(match, playerOneTeamA, playerTwoTeamA, playerOneTeamB, playerTwoTeamB)}\n" +
-                    "\n" +
-                    $"Winner Team: {winnerTeam}\n" +
-                    $"Loser Team: {loserTeam}\n" +
-                    $"Final Score: {winnerScore} - {loserScore}\n" +
-                    $"Match Duration: {formattedDuration}"
-            };
-
-            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
-            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
-        }
-
-
         public async Task SendSlackMessageIfIntegrated(FreehandDoubleMatchModel match, int userId)
         {
             await Task.Delay(1);
-            BackgroundJob.Enqueue(() => SendSlackMessage(match, userId));
+            BackgroundJob.Enqueue(() => _slackService.SendSlackMessageForFreehandDoubleGame(match, userId));
         }
 
         private async Task<bool> UpdateFreehandDoubleMatchScore(int userId, FreehandDoubleGoalCreateDto freehandGoalCreateDto)
@@ -290,7 +173,7 @@ namespace FoosballApi.Services
 
                 if (await IsSlackIntegrated(userId))
                 {
-                    BackgroundJob.Enqueue(() => SendSlackMessageIfIntegrated(fmm, userId));
+                    await SendSlackMessageIfIntegrated(fmm, userId);
                 }
             }
             else

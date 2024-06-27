@@ -1,16 +1,10 @@
 using Dapper;
-using FoosballApi.Helpers;
 using FoosballApi.Models;
 using FoosballApi.Models.Leagues;
 using FoosballApi.Models.Matches;
 using FoosballApi.Models.SingleLeagueGoals;
 using Hangfire;
-using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel;
 using Npgsql;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using FoosballApi.Models.Other;
 
 namespace FoosballApi.Services
 {
@@ -270,7 +264,7 @@ namespace FoosballApi.Services
         public async Task SendSlackMessageIfIntegrated(SingleLeagueMatchModel match, int userId)
         {
             await Task.Delay(1);
-            BackgroundJob.Enqueue(() => _slackService.SendSlackMessage(match, userId));
+            BackgroundJob.Enqueue(() => _slackService.SendSlackMessageForSingleLeague(match, userId));
         }
 
         public async Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal)
