@@ -5,6 +5,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel;
 using FoosballApi.Models.Other;
 using TextTableFormatter;
+using FoosballApi.Models.DoubleLeagueMatches;
 
 namespace FoosballApi.Services
 {
@@ -13,6 +14,7 @@ namespace FoosballApi.Services
         Task SendSlackMessageForSingleLeague(SingleLeagueMatchModel match, int userId);
         Task SendSlackMessageForFreehandGame(FreehandMatchModel match, int userId);
         Task SendSlackMessageForFreehandDoubleGame(FreehandDoubleMatchModel match, int userId);
+        Task SendSlackMessageForDoubleLeague(DoubleLeagueMatchModel match, int userId);
     }
 
     public class SlackService : ISlackService
@@ -21,21 +23,25 @@ namespace FoosballApi.Services
         private readonly IUserService _userService;
         private readonly IOrganisationService _organisationService;
         private readonly ILeagueService _leagueService;
+        private readonly IDoubleLeagueTeamService _doubleLeagueTeamService;
+        private readonly IDoubleLeaugeMatchService _doubleLeagueMatchService;
         
 
         public SlackService(
             ISingleLeagueMatchService singleLeagueMatchService,
             IUserService userService,
             IOrganisationService organisationService,
-            ILeagueService leagueService
+            ILeagueService leagueService,
+            IDoubleLeagueTeamService doubleLeagueTeamService,
+            IDoubleLeaugeMatchService doubleLeagueMatchService
            )
         {
             _singleLeagueMatchService = singleLeagueMatchService;
             _userService = userService;
             _organisationService = organisationService;
             _leagueService = leagueService;
-
-
+            _doubleLeagueTeamService = doubleLeagueTeamService;
+            _doubleLeagueMatchService = doubleLeagueMatchService;
         }
 
         public async Task SendSlackMessageForSingleLeague(SingleLeagueMatchModel match, int userId)
@@ -463,6 +469,142 @@ namespace FoosballApi.Services
 
             string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
             await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
+        }
+
+        private async Task<string> GenerateDoubleLeagueTable(DoubleLeagueMatchModel match)
+        {
+            var leagueData = await _leagueService.GetLeagueById(match.LeagueId);
+            var leagueStandings = await _doubleLeagueMatchService.GetDoubleLeagueStandings(match.LeagueId);
+            var asciiTable = leagueData.Name + "\n" + GenerateAsciiTable(leagueStandings.ToList());
+
+            return asciiTable;
+        }
+
+        private string GenerateAsciiTable(List<DoubleLeagueStandingsQuery> leagueData)
+        {
+            // Determine the maximum length of the combined team name strings
+            int maxLength = leagueData.Max(item => item.TeamName.Length);
+            maxLength = maxLength < 15 ? 15 : maxLength; // Ensure a minimum width for the Team column
+
+            // Create a new TextTable with the number of columns
+            var table = new TextTable(8, TableBordersStyle.DESIGN_FORMAL, TableVisibleBorders.SURROUND_HEADER_FOOTER_AND_COLUMNS);
+
+            // Set fixed column width ranges
+            table.SetColumnWidthRange(0, 2, 2);    // P
+            table.SetColumnWidthRange(1, maxLength, maxLength); // Team
+            table.SetColumnWidthRange(2, 2, 2);    // MP
+            table.SetColumnWidthRange(3, 2, 2);    // MW
+            table.SetColumnWidthRange(4, 2, 2);    // ML
+            table.SetColumnWidthRange(5, 2, 2);    // GS
+            table.SetColumnWidthRange(6, 2, 2);    // GR
+            table.SetColumnWidthRange(7, 6, 6);    // Points
+
+            // Add table headers
+            table.AddCell("P");
+            table.AddCell("Team");
+            table.AddCell("MP");
+            table.AddCell("MW");
+            table.AddCell("ML");
+            table.AddCell("GS");
+            table.AddCell("GR");
+            table.AddCell("Points");
+
+            // Add rows for each league data entry
+            foreach (var item in leagueData)
+            {
+                table.AddCell(item.PositionInLeague.ToString());
+                table.AddCell(item.TeamName);
+                table.AddCell(item.MatchesPlayed.ToString());
+                table.AddCell(item.TotalMatchesWon.ToString());
+                table.AddCell(item.TotalMatchesLost.ToString());
+                table.AddCell(item.TotalGoalsScored.ToString());
+                table.AddCell(item.TotalGoalsRecieved.ToString());
+                table.AddCell(item.Points.ToString());
+            }
+
+            // Render the table to a string and return it
+            return table.Render();
+        }
+
+        public async Task SendSlackMessageForDoubleLeague(DoubleLeagueMatchModel match, int userId)
+        {
+            HttpCaller httpCaller = new();
+            string _webhookUrl = "";
+            User player = await _userService.GetUserById(userId);
+            if (player != null && player.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    _webhookUrl = data.SlackWebhookUrl;
+                }
+            }
+
+            // Assuming TeamOneId and TeamTwoId can be used to fetch team details
+            var teamOne =  _doubleLeagueTeamService.GetDoubleLeagueTeamById(match.TeamOneId);
+            var teamTwo = _doubleLeagueTeamService.GetDoubleLeagueTeamById(match.TeamTwoId);
+
+            string winnerTeam;
+            string loserTeam;
+            int winnerScore;
+            int loserScore;
+
+            if (match.TeamOneScore > match.TeamTwoScore)
+            {
+                winnerTeam = teamOne.Name;
+                loserTeam = teamTwo.Name;
+                winnerScore = match.TeamOneScore.GetValueOrDefault();
+                loserScore = match.TeamTwoScore.GetValueOrDefault();
+            }
+            else
+            {
+                winnerTeam = teamTwo.Name;
+                loserTeam = teamOne.Name;
+                winnerScore = match.TeamTwoScore.GetValueOrDefault();
+                loserScore = match.TeamOneScore.GetValueOrDefault();
+            }
+
+            TimeSpan matchDuration = TimeSpan.Zero;
+            if (match.StartTime.HasValue && match.EndTime.HasValue)
+            {
+                matchDuration = match.EndTime.Value - match.StartTime.Value;
+            }
+
+            string formattedDuration;
+            if (matchDuration.TotalMinutes < 1)
+            {
+                formattedDuration = $"{matchDuration.Seconds} seconds";
+            }
+            else if (matchDuration.TotalHours < 1)
+            {
+                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
+            }
+            else
+            {
+                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
+            }
+
+            var message = new
+            {
+                text = $"Double League Match Results:\n\n" +
+                       $"Winner Team: {winnerTeam}\n" +
+                       $"Loser Team: {loserTeam}\n" +
+                       $"Final Score: {winnerScore} - {loserScore}\n" +
+                       $"Match Duration: {formattedDuration}"
+            };
+
+            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
+            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
+
+            // Send the table similar to the one for FreehandDoubleGame
+            var messageTable = new
+            {
+                text = "```\n" + await GenerateDoubleLeagueTable(match) + "\n```"
+            };
+
+            string tableBodyParam = System.Text.Json.JsonSerializer.Serialize(messageTable);
+            await httpCaller.MakeApiCallSlack(tableBodyParam, _webhookUrl);
         }
     }
 }

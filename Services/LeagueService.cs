@@ -65,8 +65,8 @@ namespace FoosballApi.Services
                     l.created_at as CreatedAt, l.up_to as UpTo, l.organisation_id as OrganisationId,
                     l.has_league_started as HasLeagueStarted, l.how_many_rounds as HowManyRounds
                     FROM leagues l
-                    JOIN league_players lp ON l.id = lp.league_id
-                    WHERE l.organisation_id = @organisationId AND lp.user_id = @userId",
+                    
+                    WHERE l.organisation_id = @organisationId",
             new { organisationId, userId });
             return leagues.ToList();
         }

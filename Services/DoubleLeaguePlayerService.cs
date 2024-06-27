@@ -50,7 +50,8 @@ namespace FoosballApi.Services
             {
                 var dapperReadData = await conn.QueryAsync<DoubleLeaguePlayerModelDapper>(
                     @"select dlp.id, dlp.user_id, dlp.double_league_team_id DoubleLeagueTeamId, u.first_name FirstName, 
-                    u.last_name LastName, u.email, dlt.id as teamId, dlt.name as team_name from double_league_players dlp
+                    u.last_name LastName, u.email, dlt.id as teamId, dlt.name as team_name, u.id as userId 
+                    from double_league_players dlp
                     join double_league_teams dlt on dlp.double_league_team_id = dlt.id
                     join users u on u.id = dlp.user_id " + $"where dlt.league_id = @league_id",
                     new { league_id = leagueId });

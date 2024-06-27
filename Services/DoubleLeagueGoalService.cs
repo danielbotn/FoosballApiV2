@@ -8,6 +8,7 @@ using FoosballApi.Dtos.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueMatches;
 using FoosballApi.Models.DoubleLeaguePlayers;
+using Hangfire;
 using Npgsql;
 
 namespace FoosballApi.Services
@@ -24,13 +25,18 @@ namespace FoosballApi.Services
     public class DoubleLeagueGoalService : IDoubleLeagueGoalService
     {
         public string _connectionString { get; }
-        public DoubleLeagueGoalService()
+        private readonly ISlackService _slackService;
+        private readonly IDoubleLeaugeMatchService _doubleLeagueMatchService;
+        public DoubleLeagueGoalService(ISlackService slackService, IDoubleLeaugeMatchService doubleLeagueMatchService)
         {
             #if DEBUG
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
             #else
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
             #endif
+
+            _slackService = slackService;
+            _doubleLeagueMatchService = doubleLeagueMatchService;
         }
 
         private async Task<int> GetMatchIdFromDoubleLeagueGoals(int goalId)
@@ -191,6 +197,10 @@ namespace FoosballApi.Services
                 if (newGoal.WinnerGoal == true)
                 {
                     await EndDoubleLeagueMatch(conn, doubleLeagueGoalCreateDto.MatchId);
+                    // send slack message
+                    await Task.Delay(1);
+                    var match = await _doubleLeagueMatchService.GetMatchById(doubleLeagueGoalCreateDto.MatchId);
+                    BackgroundJob.Enqueue(() => _slackService.SendSlackMessageForDoubleLeague(match, doubleLeagueGoalCreateDto.UserScorerId));
                 }
             }
 
