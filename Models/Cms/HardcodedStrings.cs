@@ -123,5 +123,14 @@ namespace FoosballApi.Models.Cms
         public string enterSlackWebhook { get; set; }
         public string slackWebhook { get; set; }
         public string save { get; set; }
+        public string createTeam { get; set; }
+        public string teamName { get; set; }
+        public string errorCouldNotCreateTeam { get; set; }
+        public string addTeam { get; set; }
+        public string selectedPlayers { get; set; }
+        public string startLeague { get; set; }
+        public string totalTeamsInLeague { get; set; }
+        public string partOfLeagueToStartIt { get; set; }
+        public string startLeagueError { get; set; }
     }
 }
