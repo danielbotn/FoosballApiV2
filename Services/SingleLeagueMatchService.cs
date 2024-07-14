@@ -372,6 +372,13 @@ namespace FoosballApi.Services
 
         public void UpdateSingleLeagueMatch(SingleLeagueMatchModel match)
         {
+            if (match.StartTime != null)
+            {
+                //var connection = new NtpConnection("pool.ntp.org");
+                //var utcNow = connection.GetUtc();
+                match.StartTime = DateTime.Now;
+            }
+
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Execute(

@@ -40,7 +40,7 @@ namespace FoosballApi.Services
                 var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
                     @"SELECT id as Id, name as Name, created_at as CreatedAt,
                     organisation_type as OrganisationType, organisation_code AS OrganisationCode,
-                    slack_webhook_url as SlackWebhookUrl
+                    slack_webhook_url as SlackWebhookUrl, discord_webhook_url AS DiscordWebhookUrl
                     FROM organisations
                     WHERE id = @id",
                 new { id = id });

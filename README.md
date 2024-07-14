@@ -580,3 +580,6 @@ ALTER TABLE organisations
 ADD COLUMN slack_webhook_url text
 
 ollama pull phi3:mini
+
+ALTER TABLE organisations
+ADD COLUMN discord_webhook_url TEXT;

@@ -137,6 +137,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 builder.Services.AddScoped<ISlackService, SlackService>();
+builder.Services.AddScoped<IDiscordService, DiscordService>();
 
 var app = builder.Build();
 

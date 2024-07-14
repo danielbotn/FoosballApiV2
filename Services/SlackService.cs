@@ -259,7 +259,7 @@ namespace FoosballApi.Services
             #pragma warning disable SKEXP0010
             Kernel kernel = Kernel.CreateBuilder()
                                 .AddOpenAIChatCompletion(
-                                    modelId: "phi3:mini",
+                                    modelId: "llama3:latest",
                                     endpoint: new Uri("http://localhost:11434"),
                                     apiKey: "")
                                 .Build();
