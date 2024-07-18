@@ -24,6 +24,7 @@ if (!builder.Environment.IsDevelopment())
         {
             options.ListenAnyIP(5297);
             options.ListenAnyIP(7145);
+            options.ListenAnyIP(52729);
             options.ListenAnyIP(port);
         });
     }
@@ -160,6 +161,7 @@ app.MapControllers();
 
 app.UseCors(builder => builder
   .WithOrigins("http://localhost:5173")
+  .WithOrigins("http://localhost:63039")
   .AllowAnyMethod()
   .AllowAnyHeader()
   .AllowCredentials());

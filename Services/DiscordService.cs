@@ -162,68 +162,66 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
                 if (!string.IsNullOrEmpty(data.DiscordWebhookUrl))
                 {
                     _webhookUrl = data.DiscordWebhookUrl;
                 }
             }
-
             User playerOne = await _userService.GetUserById(match.PlayerOneId);
             User playerTwo = await _userService.GetUserById(match.PlayerTwoId);
-
-            string winnerName;
-            string loserName;
-            int winnerScore;
-            int loserScore;
-
-            if (match.PlayerOneScore > match.PlayerTwoScore)
-            {
-                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
-                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                winnerScore = match.PlayerOneScore;
-                loserScore = match.PlayerTwoScore;
-            }
-            else
-            {
-                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
-                winnerScore = match.PlayerTwoScore;
-                loserScore = match.PlayerOneScore;
-            }
-
+            bool isPlayerOneWinner = match.PlayerOneScore > match.PlayerTwoScore;
+            User winner = isPlayerOneWinner ? playerOne : playerTwo;
+            User loser = isPlayerOneWinner ? playerTwo : playerOne;
+            int winnerScore = isPlayerOneWinner ? match.PlayerOneScore : match.PlayerTwoScore;
+            int loserScore = isPlayerOneWinner ? match.PlayerTwoScore : match.PlayerOneScore;
             TimeSpan matchDuration = match.EndTime.HasValue ? match.EndTime.Value - match.StartTime : TimeSpan.Zero;
-
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
+            string formattedDuration = FormatDuration(matchDuration);
+            var fields = new List<object>
             {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
+                new { name = "Winner", value = $"{winner.FirstName} {winner.LastName}", inline = true },
+                new { name = "Loser", value = $"{loser.FirstName} {loser.LastName}", inline = true },
+                new { name = "Final Score", value = $"{winnerScore} - {loserScore}", inline = false },
+                new { name = "Match Duration", value = formattedDuration, inline = true },
+            };
+            var embed = new
             {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
-
+                title = "⚽ Dano Game Result",
+                color = 3447003,  // Discord blue color
+                author = new
+                {
+                    name = $"{winner.FirstName} {winner.LastName} wins!",
+                    icon_url = winner.PhotoUrl
+                },
+                thumbnail = new
+                {
+                    url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1"
+                },
+                fields,
+                footer = new
+                {
+                    text = "Powered by Dano Foosball",
+                    icon_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1"
+                },
+                timestamp = match.EndTime ?? DateTime.UtcNow
+            };
             var content = new
             {
-                content = $"Dano Game Result:\n\n" +
-                    $"{await GetAIMessage(match, playerOne, playerTwo)}  \n" +
-                    "\n" +
-                    $"Winner: {winnerName}\n" +
-                    $"Loser: {loserName}\n" +
-                    $"Final Score: {winnerScore} - {loserScore}\n" +
-                    $"Match Duration: {formattedDuration}"
+                embeds = new[] { embed }
             };
-
             string bodyParam = System.Text.Json.JsonSerializer.Serialize(content);
             await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
         }
 
-        private string FormatNames(SingleLeagueStandingsQuery item, int maxLength)
+        private string FormatDuration(TimeSpan duration)
+        {
+            if (duration.TotalMinutes < 1)
+                return $"{duration.Seconds} seconds";
+            if (duration.TotalHours < 1)
+                return $"{(int)duration.TotalMinutes} minutes";
+            return $"{(int)duration.TotalHours} hours and {duration.Minutes} minutes";
+        }
+
+    private string FormatNames(SingleLeagueStandingsQuery item, int maxLength)
         {
             string position = item.FirstName.ToString() + " " + item.LastName.ToString();
             return position.PadRight(maxLength, ' ');
