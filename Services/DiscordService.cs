@@ -6,6 +6,7 @@ using Microsoft.SemanticKernel;
 using FoosballApi.Models.Other;
 using TextTableFormatter;
 using System.Text;
+using FoosballApi.Models.DoubleLeagueMatches;
 
 namespace FoosballApi.Services
 {
@@ -14,6 +15,7 @@ namespace FoosballApi.Services
         Task SendDiscordMessageForFreehandGame(FreehandMatchModel match, int userId);
         Task SendDiscordMessageForFreehandDoubleGame(FreehandDoubleMatchModel match, int userId);
         Task SendDiscordMessageForSingleLeague(SingleLeagueMatchModel match, int userId);
+        Task SendSDiscordMessageForDoubleLeague(DoubleLeagueMatchModel match, int userId);
     }
 
     public class DiscordService : IDiscordService
@@ -426,8 +428,6 @@ namespace FoosballApi.Services
             return sb.ToString();
         }
 
-
-
         // Maybe we will use this in production. Seems slow
         private async static Task<string> GetAIMessage(SingleLeagueMatchModel match, User userOne, User userTwo)
         {
@@ -463,5 +463,165 @@ namespace FoosballApi.Services
 
             return result;
         }
+
+        private string GenerateAsciiTable(List<DoubleLeagueStandingsQuery> leagueData)
+        {
+            // Determine the maximum length of the combined team name strings
+            int maxLength = leagueData.Max(item => item.TeamName.Length);
+            maxLength = maxLength < 15 ? 15 : maxLength; // Ensure a minimum width for the Team column
+
+            // Create a new TextTable with the number of columns
+            var table = new TextTable(8, TableBordersStyle.DESIGN_FORMAL, TableVisibleBorders.SURROUND_HEADER_FOOTER_AND_COLUMNS);
+
+            // Set fixed column width ranges
+            table.SetColumnWidthRange(0, 2, 2);    // P
+            table.SetColumnWidthRange(1, maxLength, maxLength); // Team
+            table.SetColumnWidthRange(2, 2, 2);    // MP
+            table.SetColumnWidthRange(3, 2, 2);    // MW
+            table.SetColumnWidthRange(4, 2, 2);    // ML
+            table.SetColumnWidthRange(5, 2, 2);    // GS
+            table.SetColumnWidthRange(6, 2, 2);    // GR
+            table.SetColumnWidthRange(7, 6, 6);    // Points
+
+            // Add table headers
+            table.AddCell("P");
+            table.AddCell("Team");
+            table.AddCell("MP");
+            table.AddCell("MW");
+            table.AddCell("ML");
+            table.AddCell("GS");
+            table.AddCell("GR");
+            table.AddCell("Points");
+
+            // Add rows for each league data entry
+            foreach (var item in leagueData)
+            {
+                table.AddCell(item.PositionInLeague.ToString());
+                table.AddCell(item.TeamName);
+                table.AddCell(item.MatchesPlayed.ToString());
+                table.AddCell(item.TotalMatchesWon.ToString());
+                table.AddCell(item.TotalMatchesLost.ToString());
+                table.AddCell(item.TotalGoalsScored.ToString());
+                table.AddCell(item.TotalGoalsRecieved.ToString());
+                table.AddCell(item.Points.ToString());
+            }
+
+            // Render the table to a string and return it
+            return table.Render();
+        }
+
+        private async Task<string> GenerateDoubleLeagueTable(DoubleLeagueMatchModel match)
+        {
+            var leagueData = await _leagueService.GetLeagueById(match.LeagueId);
+            var leagueStandings = await _doubleLeagueMatchService.GetDoubleLeagueStandings(match.LeagueId);
+            var asciiTable = leagueData.Name + "\n" + GenerateAsciiTable(leagueStandings.ToList());
+
+            return asciiTable;
+        }
+
+        private string GenerateDoubleLeagueStandings(DoubleLeagueMatchModel match)
+        {
+            var leagueData = _doubleLeagueMatchService.GetDoubleLeagueStandings(match.LeagueId).Result;
+            var sb = new StringBuilder();
+
+            // Add a header
+            sb.AppendLine("League Standings:");
+
+            // Sort the leagueData by Points in descending order
+            var sortedData = leagueData.OrderByDescending(item => item.Points);
+
+            foreach (var item in sortedData)
+            {
+                sb.AppendLine($"{item.PositionInLeague}. {item.TeamName} - {item.Points} pts " +
+                              $"(MP: {item.MatchesPlayed}, W: {item.TotalMatchesWon}, L: {item.TotalMatchesLost}, " +
+                              $"GS: {item.TotalGoalsScored}, GR: {item.TotalGoalsRecieved})");
+            }
+
+            return sb.ToString();
+        }
+
+        //new 
+        public async Task SendSDiscordMessageForDoubleLeague(DoubleLeagueMatchModel match, int userId)
+        {
+            HttpCaller httpCaller = new();
+            string _webhookUrl = "";
+            User player = await _userService.GetUserById(userId);
+            if (player != null && player.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
+                if (!string.IsNullOrEmpty(data.DiscordWebhookUrl))
+                {
+                    _webhookUrl = data.DiscordWebhookUrl;
+                }
+            }
+            var teamOne = _doubleLeagueTeamService.GetDoubleLeagueTeamById(match.TeamOneId);
+            var teamTwo = _doubleLeagueTeamService.GetDoubleLeagueTeamById(match.TeamTwoId);
+
+            string winnerTeam;
+            string loserTeam;
+            int winnerScore;
+            int loserScore;
+            if (match.TeamOneScore > match.TeamTwoScore)
+            {
+                winnerTeam = teamOne.Name;
+                loserTeam = teamTwo.Name;
+                winnerScore = match.TeamOneScore.GetValueOrDefault();
+                loserScore = match.TeamTwoScore.GetValueOrDefault();
+            }
+            else
+            {
+                winnerTeam = teamTwo.Name;
+                loserTeam = teamOne.Name;
+                winnerScore = match.TeamTwoScore.GetValueOrDefault();
+                loserScore = match.TeamOneScore.GetValueOrDefault();
+            }
+            TimeSpan matchDuration = match.EndTime.HasValue && match.StartTime.HasValue
+                ? match.EndTime.Value - match.StartTime.Value
+                : TimeSpan.Zero;
+            string formattedDuration = FormatDuration(matchDuration);
+
+            // Get league standings
+            var leagueStandings = GenerateDoubleLeagueStandings(match);
+
+            var fields = new List<object>
+            {
+                new { name = "Winner Team", value = winnerTeam, inline = true },
+                new { name = "Loser Team", value = loserTeam, inline = true },
+                new { name = "Final Score", value = $"{winnerScore} - {loserScore}", inline = false },
+                new { name = "Match Duration", value = formattedDuration, inline = true },
+                new { name = "League Standings", value = leagueStandings, inline = false }
+            };
+
+            var embed = new
+            {
+                title = "⚽ Dano Double League Game Result",
+                color = 3447003,  // Discord blue color
+                author = new
+                {
+                    name = $"{winnerTeam} wins!"
+                },
+                thumbnail = new
+                {
+                    url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1"
+                },
+                fields,
+                footer = new
+                {
+                    text = "Powered by Dano Foosball",
+                    icon_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1"
+                },
+                timestamp = match.EndTime ?? DateTime.UtcNow
+            };
+
+            var content = new
+            {
+                embeds = new[] { embed }
+            };
+
+            string bodyParam = System.Text.Json.JsonSerializer.Serialize(content);
+            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
+        }
+
+        
     }
 }

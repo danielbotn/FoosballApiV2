@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using FoosballApi.Dtos.DoubleLeagueGoals;
+using FoosballApi.Models;
 using FoosballApi.Models.DoubleLeagueGoals;
 using FoosballApi.Models.DoubleLeagueMatches;
 using FoosballApi.Models.DoubleLeaguePlayers;
@@ -27,7 +28,15 @@ namespace FoosballApi.Services
         public string _connectionString { get; }
         private readonly ISlackService _slackService;
         private readonly IDoubleLeaugeMatchService _doubleLeagueMatchService;
-        public DoubleLeagueGoalService(ISlackService slackService, IDoubleLeaugeMatchService doubleLeagueMatchService)
+        private readonly IDiscordService _discordService;
+        private readonly IUserService _userService;
+        private readonly IOrganisationService _organisationService;
+        public DoubleLeagueGoalService(
+            ISlackService slackService, 
+            IDoubleLeaugeMatchService doubleLeagueMatchService, 
+            IDiscordService discordService, 
+            IUserService userService, 
+            IOrganisationService organisationService)
         {
             #if DEBUG
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
@@ -37,6 +46,9 @@ namespace FoosballApi.Services
 
             _slackService = slackService;
             _doubleLeagueMatchService = doubleLeagueMatchService;
+            _discordService = discordService;
+            _userService = userService;
+            _organisationService = organisationService;
         }
 
         private async Task<int> GetMatchIdFromDoubleLeagueGoals(int goalId)
@@ -197,14 +209,61 @@ namespace FoosballApi.Services
                 if (newGoal.WinnerGoal == true)
                 {
                     await EndDoubleLeagueMatch(conn, doubleLeagueGoalCreateDto.MatchId);
-                    // send slack message
-                    await Task.Delay(1);
-                    var match = await _doubleLeagueMatchService.GetMatchById(doubleLeagueGoalCreateDto.MatchId);
-                    BackgroundJob.Enqueue(() => _slackService.SendSlackMessageForDoubleLeague(match, doubleLeagueGoalCreateDto.UserScorerId));
+                    
+                    if (await IsSlackIntegrated(doubleLeagueGoalCreateDto.UserScorerId))
+                    {
+
+                        // send slack message
+                        await Task.Delay(1);
+                        var match = await _doubleLeagueMatchService.GetMatchById(doubleLeagueGoalCreateDto.MatchId);
+                        BackgroundJob.Enqueue(() => _slackService.SendSlackMessageForDoubleLeague(match, doubleLeagueGoalCreateDto.UserScorerId));
+                    }
+
+                    if (await IsDiscordkIntegrated(doubleLeagueGoalCreateDto.UserScorerId))
+                    {
+                        // send discord message
+                        await Task.Delay(1);
+                        var match = await _doubleLeagueMatchService.GetMatchById(doubleLeagueGoalCreateDto.MatchId);
+                        BackgroundJob.Enqueue(() => _discordService.SendSDiscordMessageForDoubleLeague(match, doubleLeagueGoalCreateDto.UserScorerId));
+                    }
                 }
             }
 
             return newGoal;
+        }
+
+        private async Task<bool> IsSlackIntegrated(int userId)
+        {
+            bool result = false;
+            User playerOne = await _userService.GetUserById(userId);
+            if (playerOne != null && playerOne.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await _organisationService.GetOrganisationById(playerOne.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<bool> IsDiscordkIntegrated(int userId)
+        {
+            bool result = false;
+            User playerOne = await _userService.GetUserById(userId);
+            if (playerOne != null && playerOne.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await _organisationService.GetOrganisationById(playerOne.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.DiscordWebhookUrl))
+                {
+                    result = true;
+                }
+            }
+
+            return result;
         }
 
         private async void UpdateDoubleLeagueMatch(DoubleLeagueMatchModel match)
