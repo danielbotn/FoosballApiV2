@@ -580,7 +580,7 @@ namespace FoosballApi.Services
                 : TimeSpan.Zero;
             string formattedDuration = FormatDuration(matchDuration);
 
-            // Get league standings
+            // Get league standings.
             var leagueStandings = GenerateDoubleLeagueStandings(match);
 
             var fields = new List<object>
