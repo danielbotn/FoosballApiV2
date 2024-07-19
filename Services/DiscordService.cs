@@ -594,7 +594,7 @@ namespace FoosballApi.Services
 
             var embed = new
             {
-                title = "⚽ Dano Double League Game Result",
+                title = "⚽ Dano Game Result",
                 color = 3447003,  // Discord blue color
                 author = new
                 {
