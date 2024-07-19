@@ -234,7 +234,7 @@ namespace FoosballApi.Services
                         text = new
                         {
                             type = "mrkdwn",
-                            text = $"*Dano Game Result:*\n\n" +
+                            text = $"*⚽ Dano Game Result:*\n\n" +
                                    //$"{await GetAIMessage(match, playerOne, playerTwo)}  \n\n" +
                                    $"*Winner:*\n{winnerName}\n" +
                                    $"*Loser:*\n{loserName}\n" +
@@ -339,7 +339,7 @@ namespace FoosballApi.Services
 
             var message = new
             {
-                text = $"Dano Game Result:\n\n" +
+                text = $"⚽ Dano Game Result:\n\n" +
                     $"{await GetAIMessage(match, playerOne, playerTwo)}  \n" +
                     "\n" +
                     $"Winner: {winnerName}\n" +
@@ -458,7 +458,7 @@ namespace FoosballApi.Services
 
             var message = new
             {
-                text = $"Dano Game Result:\n\n" +
+                text = $"⚽ Dano Game Result:\n\n" +
                     $"{await GetAIMessage(match, playerOneTeamA, playerTwoTeamA, playerOneTeamB, playerTwoTeamB)}\n" +
                     "\n" +
                     $"Winner Team: {winnerTeam}\n" +
@@ -587,7 +587,7 @@ namespace FoosballApi.Services
 
             var message = new
             {
-                text = $"Dano Foosball Game result:\n\n" +
+                text = $"⚽ Dano Foosball Game result:\n\n" +
                        $"Winner Team: {winnerTeam}\n" +
                        $"Loser Team: {loserTeam}\n" +
                        $"Final Score: {winnerScore} - {loserScore}\n" +
