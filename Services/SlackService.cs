@@ -283,6 +283,22 @@ namespace FoosballApi.Services
             return result;
         }
 
+        private string FormatDuration(TimeSpan duration)
+        {
+            if (duration.TotalMinutes < 1)
+            {
+                return $"{duration.Seconds} seconds";
+            }
+            else if (duration.TotalHours < 1)
+            {
+                return $"{(int)duration.TotalMinutes} minutes";
+            }
+            else
+            {
+                return $"{(int)duration.TotalHours} hours and {(int)duration.Minutes} minutes";
+            }
+        }
+
         public async Task SendSlackMessageForFreehandGame(FreehandMatchModel match, int userId)
         {
             HttpCaller httpCaller = new();
@@ -301,56 +317,88 @@ namespace FoosballApi.Services
             User playerOne = await _userService.GetUserById(match.PlayerOneId);
             User playerTwo = await _userService.GetUserById(match.PlayerTwoId);
 
-            string winnerName;
-            string loserName;
-            int winnerScore;
-            int loserScore;
-
-            if (match.PlayerOneScore > match.PlayerTwoScore)
-            {
-                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
-                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                winnerScore = match.PlayerOneScore;
-                loserScore = match.PlayerTwoScore;
-            }
-            else
-            {
-                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
-                winnerScore = match.PlayerTwoScore;
-                loserScore = match.PlayerOneScore;
-            }
+            bool isPlayerOneWinner = match.PlayerOneScore > match.PlayerTwoScore;
+            User winner = isPlayerOneWinner ? playerOne : playerTwo;
+            User loser = isPlayerOneWinner ? playerTwo : playerOne;
+            int winnerScore = isPlayerOneWinner ? match.PlayerOneScore : match.PlayerTwoScore;
+            int loserScore = isPlayerOneWinner ? match.PlayerTwoScore : match.PlayerOneScore;
 
             TimeSpan matchDuration = match.EndTime.HasValue ? match.EndTime.Value - match.StartTime : TimeSpan.Zero;
+            string formattedDuration = FormatDuration(matchDuration);
 
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
+            var blocks = new List<object>
             {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
+                new
+                {
+                    type = "context",
+                    elements = new List<object>
+                    {
+                        new
+                        {
+                            type = "image",
+                            image_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1",
+                            alt_text = "Dano Foosball logo"
+                        },
+                        new
+                        {
+                            type = "mrkdwn",
+                            text = "*⚽ Dano Game Result*"
+                        }
+                    }
+                },
+                new
+                {
+                    type = "section",
+                    text = new
+                    {
+                        type = "mrkdwn",
+                        text = $"*{winner.FirstName} {winner.LastName} wins!*"
+                    }
+                },
+                new
+                {
+                    type = "divider"
+                },
+                new
+                {
+                    type = "section",
+                    fields = new List<object>
+                    {
+                        new { type = "mrkdwn", text = "*Winner:*\n" + $"{winner.FirstName} {winner.LastName}" },
+                        new { type = "mrkdwn", text = "*Loser:*\n" + $"{loser.FirstName} {loser.LastName}" },
+                        new { type = "mrkdwn", text = "*Final Score:*\n" + $"{winnerScore} - {loserScore}" },
+                        new { type = "mrkdwn", text = "*Match Duration:*\n" + formattedDuration }
+                    }
+                },
+                new
+                {
+                    type = "context",
+                    elements = new List<object>
+                    {
+                        new
+                        {
+                            type = "image",
+                            image_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1",
+                            alt_text = "Dano Foosball logo"
+                        },
+                        new
+                        {
+                            type = "mrkdwn",
+                            text = "Powered by Dano Foosball"
+                        }
+                    }
+                }
+            };
 
             var message = new
             {
-                text = $"⚽ Dano Game Result:\n\n" +
-                    $"{await GetAIMessage(match, playerOne, playerTwo)}  \n" +
-                    "\n" +
-                    $"Winner: {winnerName}\n" +
-                    $"Loser: {loserName}\n" +
-                    $"Final Score: {winnerScore} - {loserScore}\n" +
-                    $"Match Duration: {formattedDuration}"
+                blocks
             };
 
             string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
             await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
         }
+
 
         private async static Task<string> GetAIMessage(FreehandDoubleMatchModel match, User playerOneTeamA, User playerTwoTeamA, User playerOneTeamB, User playerTwoTeamB)
         {
