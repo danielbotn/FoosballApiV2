@@ -307,22 +307,18 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
                 if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
                 {
                     _webhookUrl = data.SlackWebhookUrl;
                 }
             }
-
             User playerOne = await _userService.GetUserById(match.PlayerOneId);
             User playerTwo = await _userService.GetUserById(match.PlayerTwoId);
-
             bool isPlayerOneWinner = match.PlayerOneScore > match.PlayerTwoScore;
             User winner = isPlayerOneWinner ? playerOne : playerTwo;
             User loser = isPlayerOneWinner ? playerTwo : playerOne;
             int winnerScore = isPlayerOneWinner ? match.PlayerOneScore : match.PlayerTwoScore;
             int loserScore = isPlayerOneWinner ? match.PlayerTwoScore : match.PlayerOneScore;
-
             TimeSpan matchDuration = match.EndTime.HasValue ? match.EndTime.Value - match.StartTime : TimeSpan.Zero;
             string formattedDuration = FormatDuration(matchDuration);
 
@@ -330,21 +326,7 @@ namespace FoosballApi.Services
             {
                 new
                 {
-                    type = "context",
-                    elements = new List<object>
-                    {
-                        new
-                        {
-                            type = "image",
-                            image_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1",
-                            alt_text = "Dano Foosball logo"
-                        },
-                        new
-                        {
-                            type = "mrkdwn",
-                            text = "*⚽ Dano Game Result*"
-                        }
-                    }
+                    type = "divider"
                 },
                 new
                 {
@@ -352,22 +334,18 @@ namespace FoosballApi.Services
                     text = new
                     {
                         type = "mrkdwn",
-                        text = $"*{winner.FirstName} {winner.LastName} wins!*"
+                        text = $":trophy: *{winner.FirstName} {winner.LastName} wins!*"
                     }
-                },
-                new
-                {
-                    type = "divider"
                 },
                 new
                 {
                     type = "section",
                     fields = new List<object>
                     {
-                        new { type = "mrkdwn", text = "*Winner:*\n" + $"{winner.FirstName} {winner.LastName}" },
-                        new { type = "mrkdwn", text = "*Loser:*\n" + $"{loser.FirstName} {loser.LastName}" },
-                        new { type = "mrkdwn", text = "*Final Score:*\n" + $"{winnerScore} - {loserScore}" },
-                        new { type = "mrkdwn", text = "*Match Duration:*\n" + formattedDuration }
+                        new { type = "mrkdwn", text = $"*Winner:*\n<{winner.PhotoUrl}|{winner.FirstName} {winner.LastName}>" },
+                        new { type = "mrkdwn", text = $"*Loser:*\n<{loser.PhotoUrl}|{loser.FirstName} {loser.LastName}>" },
+                        new { type = "mrkdwn", text = $"*Final Score:*\n{winnerScore} - {loserScore}" },
+                        new { type = "mrkdwn", text = $"*Match Duration:*\n{formattedDuration}" }
                     }
                 },
                 new
@@ -392,7 +370,26 @@ namespace FoosballApi.Services
 
             var message = new
             {
-                blocks
+                blocks = new List<object>
+                {
+                    new
+                    {
+                        type = "section",
+                        text = new
+                        {
+                            type = "mrkdwn",
+                            text = "*⚽ Dano Game Result*"
+                        }
+                    }
+                },
+                        attachments = new List<object>
+                {
+                    new
+                    {
+                        color = "#36a64f",
+                        blocks = blocks
+                    }
+                }
             };
 
             string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);

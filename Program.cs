@@ -161,7 +161,7 @@ app.MapControllers();
 
 app.UseCors(builder => builder
   .WithOrigins("http://localhost:5173")
-  .WithOrigins("http://localhost:63039")
+  .WithOrigins("http://localhost:8000")
   .AllowAnyMethod()
   .AllowAnyHeader()
   .AllowCredentials());
