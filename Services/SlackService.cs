@@ -103,7 +103,7 @@ namespace FoosballApi.Services
                                 text = new
                                 {
                                     type = "plain_text",
-                                    text = "⚽ Dano Single League Game Result",
+                                    text = "⚽ Dano Game Result",
                                     emoji = true
                                 }
                             },
