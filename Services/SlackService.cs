@@ -6,6 +6,7 @@ using Microsoft.SemanticKernel;
 using FoosballApi.Models.Other;
 using TextTableFormatter;
 using FoosballApi.Models.DoubleLeagueMatches;
+using System.Text;
 
 namespace FoosballApi.Services
 {
@@ -52,30 +53,115 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
                 if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
                 {
                     _webhookUrl = data.SlackWebhookUrl;
                 }
             }
-
             if (string.IsNullOrEmpty(_webhookUrl))
             {
                 throw new Exception("Slack webhook URL not found for the organisation.");
             }
 
+            var message = await GenerateSingleLeagueMessage(match);
+            string jsonPayload = System.Text.Json.JsonSerializer.Serialize(message);
+            await httpCaller.MakeApiCallSlack(jsonPayload, _webhookUrl);
+        }
 
-            var messageTable = new
+        private async Task<object> GenerateSingleLeagueMessage(SingleLeagueMatchModel match)
+        {
+            User winner = match.PlayerOneScore > match.PlayerTwoScore
+                ? await _userService.GetUserById(match.PlayerOne)
+                : await _userService.GetUserById(match.PlayerTwo);
+            User loser = match.PlayerOneScore > match.PlayerTwoScore
+                ? await _userService.GetUserById(match.PlayerTwo)
+                : await _userService.GetUserById(match.PlayerOne);
+            int winnerScore = Math.Max(match.PlayerOneScore.GetValueOrDefault(), match.PlayerTwoScore.GetValueOrDefault());
+            int loserScore = Math.Min(match.PlayerOneScore.GetValueOrDefault(), match.PlayerTwoScore.GetValueOrDefault());
+
+            TimeSpan matchDuration = (match.EndTime.HasValue && match.StartTime.HasValue)
+                ? match.EndTime.Value - match.StartTime.Value
+                : TimeSpan.Zero;
+            string formattedDuration = FormatDuration(matchDuration);
+
+            var leagueStandings = await _singleLeagueMatchService.GetSigleLeagueStandings(match.LeagueId);
+            var standingsText = GeneratePlainTextStandings(leagueStandings.ToList());
+            var asciiTable = GenerateAsciiTable(leagueStandings.ToList());
+
+            var message = new
             {
-                text = "```\n" + await GenerateSingleLeagueTable(match) +  "\n```"
+                attachments = new[]
+                {
+                    new
+                    {
+                        color = "#36a64f",  // Green color for left border
+                        blocks = new List<object>
+                        {
+                            new
+                            {
+                                type = "header",
+                                text = new
+                                {
+                                    type = "plain_text",
+                                    text = "⚽ Dano Single League Game Result",
+                                    emoji = true
+                                }
+                            },
+                            new
+                            {
+                                type = "section",
+                                text = new
+                                {
+                                    type = "mrkdwn",
+                                    text = $":trophy: *{winner.FirstName} {winner.LastName} wins!*"
+                                }
+                            },
+                            new
+                            {
+                                type = "section",
+                                fields = new List<object>
+                                {
+                                    new { type = "mrkdwn", text = $"*Winner:*\n{winner.FirstName} {winner.LastName}" },
+                                    new { type = "mrkdwn", text = $"*Loser:*\n{loser.FirstName} {loser.LastName}" },
+                                    new { type = "mrkdwn", text = $"*Final Score:*\n{winnerScore} - {loserScore}" },
+                                    new { type = "mrkdwn", text = $"*Match Duration:*\n{formattedDuration}" },
+                                    new { type = "mrkdwn", text = $"*League Standings:*\n{standingsText}" }
+                                }
+                            },
+                            new
+                            {
+                                type = "context",
+                                elements = new List<object>
+                                {
+                                    new
+                                    {
+                                        type = "image",
+                                        image_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1",
+                                        alt_text = "Dano Foosball logo"
+                                    },
+                                    new
+                                    {
+                                        type = "mrkdwn",
+                                        text = "Powered by Dano Foosball"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             };
 
-            var messageGeneral = await GenerateSingleLeagueMessage(match);
+            return message;
+        }
 
-            string jsonPayload= System.Text.Json.JsonSerializer.Serialize(messageGeneral);
-            string jsonPayloadTwo = System.Text.Json.JsonSerializer.Serialize(messageTable);
-            await httpCaller.MakeApiCallSlack(jsonPayload, _webhookUrl);
-            await httpCaller.MakeApiCallSlack(jsonPayloadTwo, _webhookUrl);
+        private string GeneratePlainTextStandings(List<SingleLeagueStandingsQuery> leagueData)
+        {
+            var sb = new StringBuilder();
+            foreach (var item in leagueData)
+            {
+                sb.AppendLine($"{item.PositionInLeague}. {item.FirstName} {item.LastName} - {item.Points} pts");
+            }
+            return sb.ToString();
         }
 
         // Maybe we will use this in production. Seems slow
@@ -176,77 +262,7 @@ namespace FoosballApi.Services
             return ascciiTable;
         }
 
-        private async Task<object> GenerateSingleLeagueMessage(SingleLeagueMatchModel match)
-        {
-            User playerOne = await _userService.GetUserById(match.PlayerOne);
-            User playerTwo = await _userService.GetUserById(match.PlayerTwo);
-
-            string winnerName;
-            string loserName;
-            int winnerScore;
-            int loserScore;
-
-            if (match.PlayerOneScore > match.PlayerTwoScore)
-            {
-                winnerName = $"{playerOne.FirstName} {playerOne.LastName}";
-                loserName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                winnerScore = match.PlayerOneScore.GetValueOrDefault();
-                loserScore = match.PlayerTwoScore.GetValueOrDefault();
-            }
-            else
-            {
-                winnerName = $"{playerTwo.FirstName} {playerTwo.LastName}";
-                loserName = $"{playerOne.FirstName} {playerOne.LastName}";
-                winnerScore = match.PlayerTwoScore.GetValueOrDefault();
-                loserScore = match.PlayerOneScore.GetValueOrDefault();
-            }
-
-            TimeSpan matchDuration = (match.EndTime.HasValue && match.StartTime.HasValue)
-                        ? match.EndTime.Value - match.StartTime.Value
-                        : TimeSpan.Zero;
-
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
-            {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
-
-            var leagueStandings = await _singleLeagueMatchService.GetSigleLeagueStandings(match.LeagueId);
-
-            var ascciiTable = GenerateAsciiTable(leagueStandings.ToList());
-
-           
-            var message = new
-            {
-                blocks = new List<object>
-                {
-                    new
-                    {
-                        type = "section",
-                        text = new
-                        {
-                            type = "mrkdwn",
-                            text = $"*⚽ Dano Game Result:*\n\n" +
-                                   //$"{await GetAIMessage(match, playerOne, playerTwo)}  \n\n" +
-                                   $"*Winner:*\n{winnerName}\n" +
-                                   $"*Loser:*\n{loserName}\n" +
-                                   $"*Final Score:*\n{winnerScore} - {loserScore}\n" +
-                                   $"*Match Duration:*\n{formattedDuration}\n\n"
-                        }
-                    },
-                }
-            };
-
-            return message;
-        }
+       
 
         private async static Task<string> GetAIMessage(FreehandMatchModel match, User userOne, User userTwo)
         {
