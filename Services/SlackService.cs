@@ -445,7 +445,6 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
                 if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
                 {
                     _webhookUrl = data.SlackWebhookUrl;
@@ -457,59 +456,87 @@ namespace FoosballApi.Services
             User playerOneTeamB = await _userService.GetUserById(match.PlayerOneTeamB);
             User playerTwoTeamB = match.PlayerTwoTeamB.HasValue ? await _userService.GetUserById(match.PlayerTwoTeamB.Value) : null;
 
-            string winnerTeam;
-            string loserTeam;
-            int winnerScore;
-            int loserScore;
+            bool isTeamAWinner = match.TeamAScore > match.TeamBScore;
+            string winnerTeam = isTeamAWinner
+                ? $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName}{(playerTwoTeamA != null ? $" & {playerTwoTeamA.FirstName} {playerTwoTeamA.LastName}" : "")}"
+                : $"{playerOneTeamB.FirstName} {playerOneTeamB.LastName}{(playerTwoTeamB != null ? $" & {playerTwoTeamB.FirstName} {playerTwoTeamB.LastName}" : "")}";
+            string loserTeam = isTeamAWinner
+                ? $"{playerOneTeamB.FirstName} {playerOneTeamB.LastName}{(playerTwoTeamB != null ? $" & {playerTwoTeamB.FirstName} {playerTwoTeamB.LastName}" : "")}"
+                : $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName}{(playerTwoTeamA != null ? $" & {playerTwoTeamA.FirstName} {playerTwoTeamA.LastName}" : "")}";
+            int winnerScore = isTeamAWinner ? match.TeamAScore.GetValueOrDefault() : match.TeamBScore.GetValueOrDefault();
+            int loserScore = isTeamAWinner ? match.TeamBScore.GetValueOrDefault() : match.TeamAScore.GetValueOrDefault();
 
-            if (match.TeamAScore > match.TeamBScore)
-            {
-                winnerTeam = $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName}" +
-                    $"{(playerTwoTeamA != null ? " & " + playerTwoTeamA.FirstName + " " + playerTwoTeamA.LastName : "")}";
-                loserTeam = $"{playerOneTeamB.FirstName} {playerOneTeamB.LastName}" +
-                    $"{(playerTwoTeamB != null ? " & " + playerTwoTeamB.FirstName + " " + playerTwoTeamB.LastName : "")}";
-                winnerScore = match.TeamAScore.GetValueOrDefault();
-                loserScore = match.TeamBScore.GetValueOrDefault();
-            }
-            else
-            {
-                winnerTeam = $"{playerOneTeamB.FirstName} {playerOneTeamB.LastName}" +
-                    $"{(playerTwoTeamB != null ? " & " + playerTwoTeamB.FirstName + " " + playerTwoTeamB.LastName : "")}";
-                loserTeam = $"{playerOneTeamA.FirstName} {playerOneTeamA.LastName}" +
-                    $"{(playerTwoTeamA != null ? " & " + playerTwoTeamA.FirstName + " " + playerTwoTeamA.LastName : "")}";
-                winnerScore = match.TeamBScore.GetValueOrDefault();
-                loserScore = match.TeamAScore.GetValueOrDefault();
-            }
+            TimeSpan matchDuration = match.EndTime.HasValue && match.StartTime.HasValue ? match.EndTime.Value - match.StartTime.Value : TimeSpan.Zero;
+            string formattedDuration = FormatDuration(matchDuration);
 
-            TimeSpan matchDuration = TimeSpan.Zero;
-            if (match.StartTime.HasValue && match.EndTime.HasValue)
+            var blocks = new List<object>
             {
-                matchDuration = match.EndTime.Value - match.StartTime.Value;
-            }
+                new
+                {
+                    type = "divider"
+                },
+                new
+                {
+                    type = "section",
+                    text = new
+                    {
+                        type = "mrkdwn",
+                        text = $":trophy: *{winnerTeam} wins!*"
+                    }
+                },
+                new
+                {
+                    type = "section",
+                    fields = new List<object>
+                    {
+                        new { type = "mrkdwn", text = $"*Winner Team:*\n{winnerTeam}" },
+                        new { type = "mrkdwn", text = $"*Loser Team:*\n{loserTeam}" },
+                        new { type = "mrkdwn", text = $"*Final Score:*\n{winnerScore} - {loserScore}" },
+                        new { type = "mrkdwn", text = $"*Match Duration:*\n{formattedDuration}" }
+                    }
+                },
+                new
+                {
+                    type = "context",
+                    elements = new List<object>
+                    {
+                        new
+                        {
+                            type = "image",
+                            image_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1",
+                            alt_text = "Dano Foosball logo"
+                        },
+                        new
+                        {
+                            type = "mrkdwn",
+                            text = "Powered by Dano Foosball"
+                        }
+                    }
+                }
+            };
 
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
-            {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
-
-            var message = new
-            {
-                text = $"⚽ Dano Game Result:\n\n" +
-                    $"{await GetAIMessage(match, playerOneTeamA, playerTwoTeamA, playerOneTeamB, playerTwoTeamB)}\n" +
-                    "\n" +
-                    $"Winner Team: {winnerTeam}\n" +
-                    $"Loser Team: {loserTeam}\n" +
-                    $"Final Score: {winnerScore} - {loserScore}\n" +
-                    $"Match Duration: {formattedDuration}"
+                    var message = new
+                    {
+                        blocks = new List<object>
+                {
+                    new
+                    {
+                        type = "section",
+                        text = new
+                        {
+                            type = "mrkdwn",
+                            text = "*⚽ Dano Game Result*"
+                        }
+                    }
+                },
+                        attachments = new List<object>
+                {
+                    new
+                    {
+                        color = "#36a64f",
+                        blocks = blocks
+                    }
+                }
             };
 
             string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
