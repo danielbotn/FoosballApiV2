@@ -7,6 +7,7 @@ using FoosballApi.Models.Other;
 using TextTableFormatter;
 using FoosballApi.Models.DoubleLeagueMatches;
 using System.Text;
+using FoosballApi.Models.DoubleLeagueTeams;
 
 namespace FoosballApi.Services
 {
@@ -86,8 +87,7 @@ namespace FoosballApi.Services
 
             var leagueStandings = await _singleLeagueMatchService.GetSigleLeagueStandings(match.LeagueId);
             var standingsText = GeneratePlainTextStandings(leagueStandings.ToList());
-            var asciiTable = GenerateAsciiTable(leagueStandings.ToList());
-
+            
             var message = new
             {
                 attachments = new[]
@@ -622,77 +622,128 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-
                 if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
                 {
                     _webhookUrl = data.SlackWebhookUrl;
                 }
             }
+            if (string.IsNullOrEmpty(_webhookUrl))
+            {
+                throw new Exception("Slack webhook URL not found for the organisation.");
+            }
 
-            // Assuming TeamOneId and TeamTwoId can be used to fetch team details
+            var message = await GenerateDoubleLeagueMessage(match);
+            string jsonPayload = System.Text.Json.JsonSerializer.Serialize(message);
+            await httpCaller.MakeApiCallSlack(jsonPayload, _webhookUrl);
+        }
+
+        private string GenerateDoubleLeagueStandings(DoubleLeagueMatchModel match)
+        {
+            var leagueData = _doubleLeagueMatchService.GetDoubleLeagueStandings(match.LeagueId).Result;
+            var sb = new StringBuilder();
+            var sortedData = leagueData.OrderByDescending(item => item.Points);
+            foreach (var item in sortedData)
+            {
+                sb.AppendLine($"{item.PositionInLeague}. {item.TeamName} - {item.Points} pts");
+            }
+            return sb.ToString();
+        }
+
+        private async Task<object> GenerateDoubleLeagueMessage(DoubleLeagueMatchModel match)
+        {
             var teamOne =  _doubleLeagueTeamService.GetDoubleLeagueTeamById(match.TeamOneId);
             var teamTwo = _doubleLeagueTeamService.GetDoubleLeagueTeamById(match.TeamTwoId);
 
-            string winnerTeam;
-            string loserTeam;
-            int winnerScore;
-            int loserScore;
+            bool isTeamOneWinner = match.TeamOneScore > match.TeamTwoScore;
+            var winnerTeam = isTeamOneWinner ? teamOne : teamTwo;
+            var loserTeam = isTeamOneWinner ? teamTwo : teamOne;
+            int winnerScore = isTeamOneWinner ? match.TeamOneScore.GetValueOrDefault() : match.TeamTwoScore.GetValueOrDefault();
+            int loserScore = isTeamOneWinner ? match.TeamTwoScore.GetValueOrDefault() : match.TeamOneScore.GetValueOrDefault();
 
-            if (match.TeamOneScore > match.TeamTwoScore)
-            {
-                winnerTeam = teamOne.Name;
-                loserTeam = teamTwo.Name;
-                winnerScore = match.TeamOneScore.GetValueOrDefault();
-                loserScore = match.TeamTwoScore.GetValueOrDefault();
-            }
-            else
-            {
-                winnerTeam = teamTwo.Name;
-                loserTeam = teamOne.Name;
-                winnerScore = match.TeamTwoScore.GetValueOrDefault();
-                loserScore = match.TeamOneScore.GetValueOrDefault();
-            }
-
-            TimeSpan matchDuration = TimeSpan.Zero;
-            if (match.StartTime.HasValue && match.EndTime.HasValue)
-            {
-                matchDuration = match.EndTime.Value - match.StartTime.Value;
-            }
-
-            string formattedDuration;
-            if (matchDuration.TotalMinutes < 1)
-            {
-                formattedDuration = $"{matchDuration.Seconds} seconds";
-            }
-            else if (matchDuration.TotalHours < 1)
-            {
-                formattedDuration = $"{(int)matchDuration.TotalMinutes} minutes";
-            }
-            else
-            {
-                formattedDuration = $"{(int)matchDuration.TotalHours} hours and {(int)matchDuration.Minutes} minutes";
-            }
+            TimeSpan matchDuration = (match.EndTime.HasValue && match.StartTime.HasValue)
+                ? match.EndTime.Value - match.StartTime.Value
+                : TimeSpan.Zero;
+            string formattedDuration = FormatDuration(matchDuration);
+          
+            // Get league standings.
+            var leagueStandings = GenerateDoubleLeagueStandings(match);
 
             var message = new
             {
-                text = $"⚽ Dano Foosball Game result:\n\n" +
-                       $"Winner Team: {winnerTeam}\n" +
-                       $"Loser Team: {loserTeam}\n" +
-                       $"Final Score: {winnerScore} - {loserScore}\n" +
-                       $"Match Duration: {formattedDuration}"
-            };
-
-            string bodyParam = System.Text.Json.JsonSerializer.Serialize(message);
-            await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
-
-            // Send the table similar to the one for FreehandDoubleGame
-            var messageTable = new
+                attachments = new[]
+                {
+            new
             {
-                text = "```\n" + await GenerateDoubleLeagueTable(match) + "\n```"
+                color = "#36a64f",  // Green color for left border
+                blocks = new List<object>
+                {
+                    new
+                    {
+                        type = "header",
+                        text = new
+                        {
+                            type = "plain_text",
+                            text = "⚽ Dano Game Result",
+                            emoji = true
+                        }
+                    },
+                    new
+                    {
+                        type = "section",
+                        text = new
+                        {
+                            type = "mrkdwn",
+                            text = $":trophy: *{winnerTeam.Name} wins!*"
+                        }
+                    },
+                    new
+                    {
+                        type = "section",
+                        fields = new List<object>
+                        {
+                            new { type = "mrkdwn", text = $"*Winner Team:*\n{winnerTeam.Name}\n{await GetTeamMembersString(winnerTeam)}" },
+                            new { type = "mrkdwn", text = $"*Loser Team:*\n{loserTeam.Name}\n{await GetTeamMembersString(loserTeam)}" },
+                            new { type = "mrkdwn", text = $"*Final Score:*\n{winnerScore} - {loserScore}" },
+                            new { type = "mrkdwn", text = $"*Match Duration:*\n{formattedDuration}" },
+                            new { type = "mrkdwn", text = $"*League Standings:*\n{leagueStandings}" }
+                        }
+                    },
+                    new
+                    {
+                        type = "context",
+                        elements = new List<object>
+                        {
+                            new
+                            {
+                                type = "image",
+                                image_url = "https://gcdnb.pbrd.co/images/TtmuzZBe5imH.png?o=1",
+                                alt_text = "Dano Foosball logo"
+                            },
+                            new
+                            {
+                                type = "mrkdwn",
+                                text = "Powered by Dano Foosball"
+                            }
+                        }
+                    }
+                }
+            }
+        }
             };
 
-            string tableBodyParam = System.Text.Json.JsonSerializer.Serialize(messageTable);
-            await httpCaller.MakeApiCallSlack(tableBodyParam, _webhookUrl);
+            return message;
+        }
+
+        private async Task<string> GetTeamMembersString(DoubleLeagueTeamModel team)
+        {
+            string result = "";
+            var data = await _doubleLeagueMatchService.GetTeamMembers(team.Id);
+
+            foreach (var item in data)
+            {
+                result += $"{item.FirstName} {item.LastName} ";
+            }
+            return result;
         }
     }
 }

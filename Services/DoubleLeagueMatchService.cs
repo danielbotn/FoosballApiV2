@@ -26,6 +26,7 @@ namespace FoosballApi.Services
         Task<List<DoubleLeagueMatchModel>> CreateDoubleLeagueMatches(int leagueId, int? howManyRounds);
         Task<List<TeamModel>> GetTeamOne(int teamOneId);
         Task<List<TeamModel>> GetTeamTwo(int teamTwoId);
+        Task<TeamMember[]> GetTeamMembers(int teamId);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -518,7 +519,7 @@ namespace FoosballApi.Services
             }
         }
 
-        private async Task<TeamMember[]> GetTeamMembers(int teamId)
+        public async Task<TeamMember[]> GetTeamMembers(int teamId)
         {
             List<TeamMember> teamMembers = new();
 
