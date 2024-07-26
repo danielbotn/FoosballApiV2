@@ -741,7 +741,7 @@ namespace FoosballApi.Services
 
             foreach (var item in data)
             {
-                result += $"{item.FirstName} {item.LastName} ";
+                result += $"{item.FirstName} {item.LastName} \n";
             }
             return result;
         }

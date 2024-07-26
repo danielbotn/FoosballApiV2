@@ -523,20 +523,11 @@ namespace FoosballApi.Services
         {
             var leagueData = _doubleLeagueMatchService.GetDoubleLeagueStandings(match.LeagueId).Result;
             var sb = new StringBuilder();
-
-            // Add a header
-            sb.AppendLine("League Standings:");
-
-            // Sort the leagueData by Points in descending order
             var sortedData = leagueData.OrderByDescending(item => item.Points);
-
             foreach (var item in sortedData)
             {
-                sb.AppendLine($"{item.PositionInLeague}. {item.TeamName} - {item.Points} pts " +
-                              $"(MP: {item.MatchesPlayed}, W: {item.TotalMatchesWon}, L: {item.TotalMatchesLost}, " +
-                              $"GS: {item.TotalGoalsScored}, GR: {item.TotalGoalsRecieved})");
+                sb.AppendLine($"{item.PositionInLeague}. {item.TeamName} - {item.Points} pts");
             }
-
             return sb.ToString();
         }
 
