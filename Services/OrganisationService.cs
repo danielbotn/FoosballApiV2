@@ -41,7 +41,7 @@ namespace FoosballApi.Services
                     @"SELECT id as Id, name as Name, created_at as CreatedAt,
                     organisation_type as OrganisationType, organisation_code AS OrganisationCode,
                     slack_webhook_url as SlackWebhookUrl, discord_webhook_url AS DiscordWebhookUrl,
-                    microsoft_teams_webhook_url as MicrosoftTeamWebhookUrl
+                    microsoft_teams_webhook_url as MicrosoftTeamsWebhookUrl
                     FROM organisations
                     WHERE id = @id",
                 new { id = id });
@@ -137,7 +137,8 @@ namespace FoosballApi.Services
                 conn.Execute(
                     @"UPDATE organisations
                     SET name = @name, created_at = @created_at, organisation_type = @organisation_type,
-                    slack_webhook_url = @slack_webhook_url
+                    slack_webhook_url = @slack_webhook_url, discord_webhook_url = @discord_webhook_url,
+                    microsoft_teams_webhook_url = @microsoft_teams_webhook_url
                     WHERE id = @id",
                 new 
                 { 
@@ -145,6 +146,8 @@ namespace FoosballApi.Services
                     created_at = organisation.CreatedAt,
                     organisation_type = organisation_type,
                     slack_webhook_url = organisation.SlackWebhookUrl,
+                    discord_webhook_url = organisation.DiscordWebhookUrl,
+                    microsoft_teams_webhook_url = organisation.MicrosoftTeamsWebhookUrl,
                     id = organisation.Id
                 });
             }

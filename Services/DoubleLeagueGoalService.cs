@@ -260,7 +260,7 @@ namespace FoosballApi.Services
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(playerOne.CurrentOrganisationId.GetValueOrDefault());
 
-                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamsWebhookUrl))
                 {
                     result = true;
                 }

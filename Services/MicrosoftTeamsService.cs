@@ -50,9 +50,9 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamsWebhookUrl))
                 {
-                    _webhookUrl = data.MicrosoftTeamWebhookUrl;
+                    _webhookUrl = data.MicrosoftTeamsWebhookUrl;
                 }
             }
 
@@ -177,9 +177,9 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamsWebhookUrl))
                 {
-                    _webhookUrl = data.MicrosoftTeamWebhookUrl;
+                    _webhookUrl = data.MicrosoftTeamsWebhookUrl;
                 }
             }
 
@@ -303,9 +303,9 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamsWebhookUrl))
                 {
-                    _webhookUrl = data.MicrosoftTeamWebhookUrl;
+                    _webhookUrl = data.MicrosoftTeamsWebhookUrl;
                 }
             }
 
@@ -457,9 +457,9 @@ namespace FoosballApi.Services
             if (player != null && player.CurrentOrganisationId != null)
             {
                 OrganisationModel data = await _organisationService.GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
-                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamsWebhookUrl))
                 {
-                    _webhookUrl = data.MicrosoftTeamWebhookUrl;
+                    _webhookUrl = data.MicrosoftTeamsWebhookUrl;
                 }
             }
 

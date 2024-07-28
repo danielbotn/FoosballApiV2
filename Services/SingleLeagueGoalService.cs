@@ -226,7 +226,7 @@ namespace FoosballApi.Services
                 @"SELECT id as Id, name as Name, created_at as CreatedAt,
                     organisation_type as OrganisationType, organisation_code AS OrganisationCode,
                     slack_webhook_url as SlackWebhookUrl, discord_webhook_url AS DiscordWebhookUrl,
-                    microsoft_teams_webhook_url as MicrosoftTeamWebhookUrl
+                    microsoft_teams_webhook_url as MicrosoftTeamsWebhookUrl
                     FROM organisations
                     WHERE id = @id",
             new { id = id });
@@ -273,7 +273,7 @@ namespace FoosballApi.Services
             {
                 OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
 
-                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamsWebhookUrl))
                 {
                     result = true;
                 }
