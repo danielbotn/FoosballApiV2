@@ -151,8 +151,6 @@ namespace FoosballApi.Services
             await httpCaller.MakeApiCallSlack(bodyParam, _webhookUrl);
         }
 
-
-
         public async Task SendDiscordMessageForFreehandGame(FreehandMatchModel match, int userId)
         {
             HttpCaller httpCaller = new();

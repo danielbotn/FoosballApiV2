@@ -21,5 +21,6 @@ namespace FoosballApi
         public string OrganisationCode { get; set; }
         public string SlackWebhookUrl { get; set; }
         public string DiscordWebhookUrl { get; set; }
+        public string MicrosoftTeamWebhookUrl { get; set; }
     }
 }

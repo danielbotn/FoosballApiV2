@@ -583,3 +583,6 @@ ollama pull phi3:mini
 
 ALTER TABLE organisations
 ADD COLUMN discord_webhook_url TEXT;
+
+ALTER TABLE organisations
+ADD COLUMN microsoft_teams_webhook_url TEXT;

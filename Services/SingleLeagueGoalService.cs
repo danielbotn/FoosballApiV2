@@ -26,7 +26,8 @@ namespace FoosballApi.Services
         private readonly ISingleLeagueMatchService _singleLeagueMatchService;
         private readonly ISlackService _slackService;
         private readonly IDiscordService _discordService;
-        public SingleLeagueGoalService(ISingleLeagueMatchService singleLeagueMatchService, ISlackService slackService, IDiscordService discordService)
+        private readonly IMicrosoftTeamsService _microsoftTeamsService;
+        public SingleLeagueGoalService(ISingleLeagueMatchService singleLeagueMatchService, ISlackService slackService, IDiscordService discordService, IMicrosoftTeamsService microsoftTeamsService)
         {
             #if DEBUG
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
@@ -36,7 +37,7 @@ namespace FoosballApi.Services
             _singleLeagueMatchService = singleLeagueMatchService;
             _slackService = slackService;
             _discordService = discordService;
-
+            _microsoftTeamsService = microsoftTeamsService;
         }
 
         public bool CheckCreatePermission(int userId, SingleLeagueCreateModel singleLeagueCreateModel)
@@ -224,7 +225,8 @@ namespace FoosballApi.Services
             var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
                 @"SELECT id as Id, name as Name, created_at as CreatedAt,
                     organisation_type as OrganisationType, organisation_code AS OrganisationCode,
-                    slack_webhook_url as SlackWebhookUrl, discord_webhook_url AS DiscordWebhookUrl
+                    slack_webhook_url as SlackWebhookUrl, discord_webhook_url AS DiscordWebhookUrl,
+                    microsoft_teams_webhook_url as MicrosoftTeamWebhookUrl
                     FROM organisations
                     WHERE id = @id",
             new { id = id });
@@ -263,6 +265,23 @@ namespace FoosballApi.Services
             return result;
         }
 
+        private async Task<bool> IsTeamsIntegrated(int userId)
+        {
+            bool result = false;
+            User player = await GetUserById(userId);
+            if (player != null && player.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await GetOrganisationById(player.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
         private async Task<bool> IsDiscordIntegrated(int userId)
         {
             bool result = false;
@@ -290,6 +309,12 @@ namespace FoosballApi.Services
         {
             await Task.Delay(1);
             BackgroundJob.Enqueue(() => _discordService.SendDiscordMessageForSingleLeague(match, userId));
+        }
+
+        private async Task SendTeamsMessageIfIntegrated(SingleLeagueMatchModel match, int userId)
+        {
+            await Task.Delay(1);
+            BackgroundJob.Enqueue(() => _microsoftTeamsService.SendTeamsMessageForSingleLeague(match, userId));
         }
 
         public async Task UpdateSingleLeagueMatch(SingleLeagueGoalModel goal)
@@ -337,6 +362,13 @@ namespace FoosballApi.Services
                 {
                     SingleLeagueMatchModel matchUpdated = await GetSingleLeagueMatchById(goal.MatchId);
                     await SendSDiscordMessageIfIntegrated(matchUpdated, goal.ScoredByUserId);
+                }
+
+                // check if teams integration and send team message
+                if (await IsTeamsIntegrated(goal.ScoredByUserId))
+                {
+                    SingleLeagueMatchModel matchUpdated = await GetSingleLeagueMatchById(goal.MatchId);
+                    await SendTeamsMessageIfIntegrated(matchUpdated, goal.ScoredByUserId);
                 }
             }
         }

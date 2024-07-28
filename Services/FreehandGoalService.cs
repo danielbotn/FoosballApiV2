@@ -25,8 +25,9 @@ namespace FoosballApi.Services
         public string _connectionString { get; }
         private readonly ISlackService _slackService;
         private readonly IDiscordService _discordService;
+        private readonly IMicrosoftTeamsService _microsoftTeamsService;
 
-        public FreehandGoalService(ISlackService slackService, IDiscordService discordService)
+        public FreehandGoalService(ISlackService slackService, IDiscordService discordService, IMicrosoftTeamsService microsoftTeamsService)
         {
             #if DEBUG
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
@@ -35,6 +36,7 @@ namespace FoosballApi.Services
             #endif
             _slackService = slackService;
             _discordService = discordService;
+            _microsoftTeamsService = microsoftTeamsService;
         }
 
         private async Task<IEnumerable<FreehandGoalModel>> GetFreehandGoalsByMatchId(int matchId)
@@ -243,7 +245,8 @@ namespace FoosballApi.Services
             var organisation = await conn.QueryFirstOrDefaultAsync<OrganisationModel>(
                 @"SELECT id as Id, name as Name, created_at as CreatedAt,
                     organisation_type as OrganisationType, organisation_code AS OrganisationCode,
-                    slack_webhook_url as SlackWebhookUrl, discord_webhook_url as DiscordWebhookUrl
+                    slack_webhook_url as SlackWebhookUrl, discord_webhook_url as DiscordWebhookUrl,
+                    microsoft_teams_webhook_url as MicrosoftTeamWebhookUrl
                     FROM organisations
                     WHERE id = @id",
             new { id = id });
@@ -259,6 +262,23 @@ namespace FoosballApi.Services
                 OrganisationModel data = await GetOrganisationById(playerOne.CurrentOrganisationId.GetValueOrDefault());
 
                 if (!string.IsNullOrEmpty(data.SlackWebhookUrl))
+                {
+                    result = true;
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<bool> IsTeamsIntegrated(int userId)
+        {
+            bool result = false;
+            User playerOne = await GetUserById(userId);
+            if (playerOne != null && playerOne.CurrentOrganisationId != null)
+            {
+                OrganisationModel data = await GetOrganisationById(playerOne.CurrentOrganisationId.GetValueOrDefault());
+
+                if (!string.IsNullOrEmpty(data.MicrosoftTeamWebhookUrl))
                 {
                     result = true;
                 }
@@ -296,6 +316,12 @@ namespace FoosballApi.Services
             BackgroundJob.Enqueue(() => _discordService.SendDiscordMessageForFreehandGame(match, userId));
         }
 
+        public async Task SendTeamsMessageIfIntegrated(FreehandMatchModel match, int userId)
+        {
+            await Task.Delay(1);
+            BackgroundJob.Enqueue(() => _microsoftTeamsService.SendTeamsMessageForFreehandGame(match, userId));
+        }
+
         private async void UpdateFreehandMatchScore(int userId, FreehandGoalCreateDto freehandGoalCreateDto)
         {
             var fmm = await GetFreehandMatchById(freehandGoalCreateDto.MatchId);
@@ -324,6 +350,12 @@ namespace FoosballApi.Services
                 if (await IsDiscordntegrated(userId))
                 {
                     await SendDiscordMessageIfIntegrated(fmm, userId);
+                }
+
+                // Send microsoft teams message
+                if (await IsTeamsIntegrated(userId))
+                {
+                    await SendTeamsMessageIfIntegrated(fmm, userId);
                 }
             }
 
