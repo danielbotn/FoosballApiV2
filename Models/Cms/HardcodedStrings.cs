@@ -132,5 +132,23 @@ namespace FoosballApi.Models.Cms
         public string totalTeamsInLeague { get; set; }
         public string partOfLeagueToStartIt { get; set; }
         public string startLeagueError { get; set; }
+        
+        // Discord
+        public string enterDiscordWebhook { get; set; }
+        public string discordWebhook { get; set; }
+        public string discordWebhookError { get; set; }
+        public string discordWebhookUpdated { get; set; }
+
+        // Teams
+        public string enterTeamsWebhook { get; set; }
+        public string teamsWebhook { get; set; }
+        public string teamsWebhookError { get; set; }
+        public string teamsWebhookUpdated { get; set; }
+
+        // Slack
+        public string slackWebhookError { get; set; }
+        public string slackWebhookUpdated { get; set; }
+
+
     }
 }
