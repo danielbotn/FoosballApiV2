@@ -68,7 +68,62 @@ namespace FoosballApi.Services
                     
                     WHERE l.organisation_id = @organisationId",
             new { organisationId, userId });
-            return leagues.ToList();
+            return await CheckLeaguesStatus(leagues.ToList(), userId, organisationId);
+        }
+
+        private async Task<bool> CheckUserLeagueAccess(NpgsqlConnection conn, int leagueId, int userId, TypeOfLeague leagueType)
+        {
+            string query;
+            if (leagueType == TypeOfLeague.single_league)
+            {
+                query = @"
+            SELECT COUNT(*) 
+            FROM league_players 
+            WHERE league_id = @LeagueId AND user_id = @UserId";
+            }
+            else // double league
+            {
+                query = @"
+            SELECT COUNT(*) 
+            FROM double_league_players dlp
+            JOIN double_league_teams dlt ON dlp.double_league_team_id = dlt.id
+            WHERE dlt.league_id = @LeagueId AND dlp.user_id = @UserId";
+            }
+
+            int? count = await conn.ExecuteScalarAsync<int?>(query, new { LeagueId = leagueId, UserId = userId });
+            return count.HasValue && count.Value > 0;
+        }
+
+        private async Task<IEnumerable<LeagueModel>> CheckLeaguesStatus(IEnumerable<LeagueModel> leagues, int userId, int organisationId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            foreach (var league in leagues)
+            {
+                string matchCountQuery = league.TypeOfLeague == TypeOfLeague.single_league
+                    ? "SELECT COUNT(*) FROM single_league_matches WHERE league_id = @LeagueId"
+                    : "SELECT COUNT(*) FROM double_league_matches WHERE league_id = @LeagueId";
+
+                int totalMatches = await conn.ExecuteScalarAsync<int>(matchCountQuery, new { LeagueId = league.Id });
+
+                bool hasAccess = await CheckUserLeagueAccess(conn, league.Id, userId, league.TypeOfLeague);
+
+                league.HasAccess = hasAccess;
+
+                if (totalMatches == 0)
+                {
+                    league.HasLeagueEnded = false; // League hasn't started
+                }
+                else
+                {
+                    string unfinishedMatchQuery = league.TypeOfLeague == TypeOfLeague.single_league
+                        ? "SELECT COUNT(*) FROM single_league_matches WHERE league_id = @LeagueId AND match_ended = false"
+                        : "SELECT COUNT(*) FROM double_league_matches WHERE league_id = @LeagueId AND match_ended = false";
+
+                    int unfinishedMatches = await conn.ExecuteScalarAsync<int>(unfinishedMatchQuery, new { LeagueId = league.Id });
+                    league.HasLeagueEnded = unfinishedMatches == 0; // League has ended if no unfinished matches
+                }
+            }
+            return leagues;
         }
 
         public async Task<int> GetOrganisationId(int leagueId)

@@ -11,5 +11,7 @@ namespace FoosballApi.Models.Leagues
         public int OrganisationId { get; set; }
         public bool HasLeagueStarted { get; set; }
         public int? HowManyRounds { get; set; }
+        public bool? HasLeagueEnded { get; set; }
+        public bool? HasAccess { get; set; }
     }
 }

@@ -149,6 +149,7 @@ namespace FoosballApi.Models.Cms
         public string slackWebhookError { get; set; }
         public string slackWebhookUpdated { get; set; }
 
-
+        public string finished { get; set; }
+        public string ongoing { get; set; }
     }
 }
