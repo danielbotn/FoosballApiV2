@@ -304,7 +304,7 @@ namespace FoosballApi.Services
         public string CreateToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var jwt = Environment.GetEnvironmentVariable("JWTSecret");
+            var jwt = Environment.GetEnvironmentVariable("JwtSecret");
             var key = Encoding.ASCII.GetBytes(jwt);
 
             var tokenDescriptor = new SecurityTokenDescriptor
