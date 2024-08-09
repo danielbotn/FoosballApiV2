@@ -10,15 +10,14 @@ using Newtonsoft.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load environment variables
 DotNetEnv.Env.Load();
 
-// Why was this added
-// https does not work when this is added in development
+// Configure Kestrel for non-development environments
 var portVar = Environment.GetEnvironmentVariable("PORT");
-
 if (!builder.Environment.IsDevelopment())
 {
-    if (portVar is {Length: >0} && int.TryParse(portVar, out int port))
+    if (portVar is { Length: > 0 } && int.TryParse(portVar, out int port))
     {
         builder.WebHost.ConfigureKestrel(options =>
         {
@@ -30,8 +29,15 @@ if (!builder.Environment.IsDevelopment())
     }
 }
 
-// Add services to the container.
-var key = Encoding.ASCII.GetBytes(Environment.GetEnvironmentVariable("JWTSecret"));
+// Add services to the container
+var jwtSecret = Environment.GetEnvironmentVariable("JwtSecret");
+
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    throw new ArgumentNullException("JWTSecret", "JwtSecret is not configured.");
+}
+
+var key = Encoding.ASCII.GetBytes(jwtSecret);
 builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -44,12 +50,16 @@ builder.Services.AddAuthentication(x =>
         OnTokenValidated = context =>
         {
             var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
-            var name = context.Principal.FindFirst("name").Value;
-            var userId = int.Parse(name);
+            var name = context.Principal.FindFirst("name")?.Value;
+            if (name == null || !int.TryParse(name, out int userId))
+            {
+                context.Fail("Unauthorized");
+                return Task.CompletedTask;
+            }
+
             var user = userService.GetUserByIdSync(userId);
             if (user == null)
             {
-                // return unauthorized if user no longer exists
                 context.Fail("Unauthorized");
             }
             return Task.CompletedTask;
@@ -63,25 +73,25 @@ builder.Services.AddAuthentication(x =>
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = false,
         ValidateAudience = false,
-        // ClockSkew = TimeSpan.Zero // for debugging only to remove 5 min default time
     };
 });
-builder.Services.AddControllers().AddNewtonsoftJson(s =>
-            {
-                s.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-            });
 
-string _connectionString = "";
-#if DEBUG
-    _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
-#else
-    _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
-#endif
+builder.Services.AddControllers().AddNewtonsoftJson(s =>
+{
+    s.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+});
+
+string connectionString = builder.Environment.IsDevelopment()
+    ? Environment.GetEnvironmentVariable("FoosballDbDev")
+    : Environment.GetEnvironmentVariable("FoosballDbProd");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new ArgumentNullException("ConnectionString", "Connection string is not configured.");
+}
 
 builder.Services.AddHangfire(config =>
-    config.UsePostgreSqlStorage(c =>
-        c.UseNpgsqlConnection(_connectionString)));
-
+    config.UsePostgreSqlStorage(connectionString));
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -103,39 +113,37 @@ builder.Services.AddScoped<ISingleLeaguePlayersService, SingleLeaguePlayersServi
 builder.Services.AddScoped<IPremiumService, PremiumService>();
 builder.Services.AddScoped<IMicrosoftTeamsService, MicrosoftTeamsService>();
 
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Foosball Api", Version = "v1" });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        c.SwaggerDoc("v1", new OpenApiInfo { Title = "Foosball Api", Version = "v1" });
-
-        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "JWT Authorization header using the Bearer scheme."
-        });
-
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference
-                        {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "Bearer"
-                        }
-                    },
-                    new string[] {}
-
-            }
-        });
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
     });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
@@ -144,7 +152,7 @@ builder.Services.AddScoped<IDiscordService, DiscordService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -162,8 +170,7 @@ app.UseHangfireDashboard();
 app.MapControllers();
 
 app.UseCors(builder => builder
-  .WithOrigins("http://localhost:5173")
-  .WithOrigins("http://localhost:8000")
+  .WithOrigins("http://localhost:5173", "http://localhost:8000")
   .AllowAnyMethod()
   .AllowAnyHeader()
   .AllowCredentials());
