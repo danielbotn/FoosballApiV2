@@ -1,9 +1,11 @@
 using System.Text;
 using FoosballApi;
+using FoosballApi.Hub;
 using FoosballApi.Services;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Serialization;
@@ -113,6 +115,21 @@ builder.Services.AddScoped<ISingleLeaguePlayersService, SingleLeaguePlayersServi
 builder.Services.AddScoped<IPremiumService, PremiumService>();
 builder.Services.AddScoped<IMicrosoftTeamsService, MicrosoftTeamsService>();
 
+// Register IHttpContextAccessor
+builder.Services.AddHttpContextAccessor();
+
+// Register MatchesRealtimeService as Singleton
+builder.Services.AddSingleton<IMatchesRealtimeService>(provider =>
+{
+    var hubContext = provider.GetRequiredService<IHubContext<MessageHub>>();
+    var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
+    return new MatchesRealtimeService(hubContext, connectionString, httpContextAccessor);
+});
+
+
+// Register the Background Service
+builder.Services.AddHostedService<ScoreNotificationBackgroundService>();
+
 // Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -149,6 +166,9 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 builder.Services.AddScoped<ISlackService, SlackService>();
 builder.Services.AddScoped<IDiscordService, DiscordService>();
+
+// Add SignalR support
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
