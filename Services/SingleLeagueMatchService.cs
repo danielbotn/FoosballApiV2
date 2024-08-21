@@ -19,6 +19,7 @@ namespace FoosballApi.Services
         void UpdateSingleLeagueMatch(SingleLeagueMatchModel match);
         void ResetMatch(SingleLeagueMatchModel match);
         Task<List<SingleLeagueMatchModel>> CreateSingleLeagueMatches(CreateSingleLeagueMatchesBody body);
+        Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByOrganisationId(int organisationId);
     }
 
     public class SingleLeagueMatchService : ISingleLeagueMatchService
@@ -269,6 +270,34 @@ namespace FoosballApi.Services
                     JOIN leagues l on l.id = slm.league_id
                     where league_id = @league_id",
                 new { league_id = leagueId });
+                
+                return matches.ToList();
+            }
+        }
+
+        public async Task<IEnumerable<SingleLeagueMatchesQuery>> GetAllMatchesByOrganisationId(int organisationId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<SingleLeagueMatchesQuery>(
+                    @"SELECT slm.id as Id, slm.player_one as PlayerOne, slm.player_two as PlayerTwo, slm.league_id as LeagueId, 
+                    slm.start_time as StartTime, slm.end_time as EndTime,
+                    slm.player_one_score as PlayerOneScore, slm.player_two_score as PlayerTwoScore, 
+                    slm.match_ended as MatchEnded, slm.match_paused as MatchPaused, slm.match_started as MatchStarted,
+                    l.organisation_id as OrganisationId,
+                    (SELECT u.first_name from Users u where u.id = slm.player_one) as PlayerOneFirstName,
+                    (SELECT u2.last_name from Users u2 where u2.id = slm.player_one) as PlayerOneLastName,
+                    (SELECT u3.first_name from Users u3 where u3.id = slm.player_two) as PlayerTwoFirstName,
+                    (SELECT u4.last_name from Users u4 where u4.id = slm.player_two) as PlayerTwoLastName,
+                    (SELECT u5.photo_url from Users u5 where u5.id = slm.player_one) as PlayerOnePhotoUrl,
+                    (SELECT u6.photo_url from Users u6 where u6.id = slm.player_two) as PlayerTwoPhotoUrl
+                    FROM single_league_matches slm
+                    JOIN leagues l on l.id = slm.league_id
+                    where l.organisation_id = @organisation_id And slm.match_ended = false AND slm.match_started = true
+
+
+",
+                new { organisation_id = organisationId });
                 
                 return matches.ToList();
             }

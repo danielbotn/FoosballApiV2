@@ -15,6 +15,7 @@ namespace FoosballApi.Services
         Task<FreehandDoubleMatchModel> GetFreehandDoubleMatchById(int matchId);
         void UpdateFreehandMatch(FreehandDoubleMatchModel freehandMatchModel);
         void DeleteFreehandMatch(FreehandDoubleMatchModel freehandDoubleMatchModel);
+        Task<IEnumerable<FreehandDoubleMatchModel>> GetAllFreehandDoubleMatchesByOrganisation(int organisationid);
     }
 
     public class FreehandDoubleMatchService : IFreehandDoubleMatchService
@@ -84,6 +85,52 @@ namespace FoosballApi.Services
                     player_one_team_b = @userId OR player_two_team_b = @userId
                     ",
                 new { userId });
+                return matches.ToList();
+            }
+        }
+
+        public async Task<IEnumerable<FreehandDoubleMatchModel>> GetAllFreehandDoubleMatchesByOrganisation(int organisationid)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<FreehandDoubleMatchModel>(
+                    @"SELECT 
+                        fdm.id as Id, 
+                        fdm.player_one_team_a as PlayerOneTeamA, 
+                        fdm.player_two_team_a as PlayerTwoTeamA,
+                        fdm.player_one_team_b as PlayerOneTeamB, 
+                        fdm.player_two_team_b as PlayerTwoTeamB,
+                        fdm.organisation_id as OrganisationId, 
+                        fdm.start_time as StartTime, 
+                        fdm.end_time as EndTime,
+                        fdm.team_a_score as TeamAScore, 
+                        fdm.team_b_score as TeamBScore, 
+                        fdm.nickname_team_a as NicknameTeamA,
+                        fdm.nickname_team_b as NicknameTeamB, 
+                        fdm.up_to as UpTo, 
+                        fdm.game_finished as GameFinished,
+                        fdm.game_paused as GamePaused,
+
+                        u1.first_name as OpponentOneFirstName,
+                        u1.last_name as OpponentOneLastName,
+                        u1.photo_url as OpponentOnePhotoUrl,
+
+                        u2.first_name as OpponentTwoFirstName,
+                        u2.last_name as OpponentTwoLastName,
+                        u2.photo_url as OpponentTwoPhotoUrl,
+
+                        u3.first_name as TeamMateFirstName,
+                        u3.last_name as TeamMateLastName,
+                        u3.photo_url as TeamMatePhotoUrl
+
+                    FROM freehand_double_matches fdm
+                    LEFT JOIN users u1 ON fdm.player_one_team_a = u1.id
+                    LEFT JOIN users u2 ON fdm.player_one_team_b = u2.id
+                    LEFT JOIN users u3 ON fdm.player_two_team_a = u3.id
+                    LEFT JOIN users u4 ON fdm.player_two_team_b = u4.id
+                    WHERE fdm.organisation_id = @organisation_id AND fdm.game_finished = false
+                    ",
+                new { organisation_id = organisationid });
                 return matches.ToList();
             }
         }

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Dapper;
 using FoosballApi.Models;
 using FoosballApi.Models.DoubleLeagueGoals;
@@ -27,6 +24,7 @@ namespace FoosballApi.Services
         Task<List<TeamModel>> GetTeamOne(int teamOneId);
         Task<List<TeamModel>> GetTeamTwo(int teamTwoId);
         Task<TeamMember[]> GetTeamMembers(int teamId);
+        Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisation(int organisationId);
     }
 
     public class DoubleLeaugeMatchService : IDoubleLeaugeMatchService
@@ -144,6 +142,22 @@ namespace FoosballApi.Services
             }
         }
 
+        private async Task<List<AllMatchesModel>> GetDoubleLeagueMatchesByOrganisation(int organisationId)
+        {
+            using (var conn = new NpgsqlConnection(_connectionString))
+            {
+                var matches = await conn.QueryAsync<AllMatchesModel>(
+                    @"SELECT dlm.id as Id, dlm.team_one_id as TeamOneId, dlm.team_two_id as TeamTwoId, dlm.league_id as LeagueId, dlm.start_time as StartTime,
+                    dlm.end_time as EndTime, dlm.team_one_score as TeamOneScore, dlm.team_two_score as TeamTwoScore, dlm.match_started as MatchStarted,
+                    dlm.match_ended as MatchEnded, dlm.match_paused as MatchPaused
+                    FROM double_league_matches dlm
+					JOIN leagues l on l.id = dlm.league_id
+                    WHERE l.organisation_id = @organisation_id AND match_started = true AND match_ended = false",
+                    new { organisation_id = organisationId });
+                return matches.ToList();
+            }
+        }
+
         public async Task<List<TeamModel>> GetTeamOne(int teamOneId)
         {
             using var conn = new NpgsqlConnection(_connectionString);
@@ -207,6 +221,44 @@ namespace FoosballApi.Services
         public async Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisationId(int currentOrganisationId, int leagueId)
         {
             var query = await GetDoubleLeagueMatchesByLeagueId(leagueId);
+
+            List<AllMatchesModel> result = new List<AllMatchesModel>();
+
+            foreach (var item in query)
+            {
+                var subquery = GetSubQuery(item);
+
+                var teamOne = subquery.ToArray();
+
+                var subquery2 = GetSubQueryTwo(item);
+
+                var teamTwo = subquery2.ToArray();
+
+                var allTeams = new AllMatchesModel
+                {
+                    Id = item.Id,
+                    TeamOneId = item.TeamOneId,
+                    TeamTwoId = item.TeamTwoId,
+                    LeagueId = item.LeagueId,
+                    StartTime = item.StartTime,
+                    EndTime = item.EndTime,
+                    TeamOneScore = (int)item.TeamOneScore,
+                    TeamTwoScore = (int)item.TeamTwoScore,
+                    MatchStarted = (bool)item.MatchStarted,
+                    MatchEnded = (bool)item.MatchEnded,
+                    MatchPaused = (bool)item.MatchPaused,
+                    TeamOne = teamOne,
+                    TeamTwo = teamTwo
+                };
+                result.Add(allTeams);
+
+            }
+            return result;
+        }
+
+        public async Task<IEnumerable<AllMatchesModel>> GetAllMatchesByOrganisation(int organisationId)
+        {
+            var query = await GetDoubleLeagueMatchesByOrganisation(organisationId);
 
             List<AllMatchesModel> result = new List<AllMatchesModel>();
 
