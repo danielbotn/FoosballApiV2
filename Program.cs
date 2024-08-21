@@ -114,6 +114,7 @@ builder.Services.AddScoped<ISingleLeagueGoalService, SingleLeagueGoalService>();
 builder.Services.AddScoped<ISingleLeaguePlayersService, SingleLeaguePlayersService>();
 builder.Services.AddScoped<IPremiumService, PremiumService>();
 builder.Services.AddScoped<IMicrosoftTeamsService, MicrosoftTeamsService>();
+builder.Services.AddScoped<IMatchService, MatchService>();
 
 // Register IHttpContextAccessor
 builder.Services.AddHttpContextAccessor();
