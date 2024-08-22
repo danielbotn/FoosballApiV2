@@ -32,5 +32,9 @@ namespace FoosballApi.Models.Matches
         public string TeamMateFirstName { get; set; } = null;
         public string TeamMateLastName { get; set; } = null;
         public string TeamMatePhotoUrl { get; set; } = null;
+        // New fields
+        public string UserFirstName { get; set; } = null;
+        public string UserLastName { get; set; } = null;
+        public string UserPhotoUrl { get; set; } = null;
     }
 }
