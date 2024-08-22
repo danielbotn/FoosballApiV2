@@ -85,16 +85,25 @@ namespace FoosballApi.Profiles
             CreateMap<SingleLeagueMatchesQuery, Match>()
                 .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.SingleLeagueMatch)) // Assuming it's a single league match
                 .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => ETypeOfMatch.SingleLeagueMatch.ToString())) // Convert enum to string
-                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.PlayerOne))
-                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.PlayerTwo))
-                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.Id))
-                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.PlayerOneScore ?? 0))
-                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.PlayerTwoScore ?? 0))
-                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime ?? DateTime.MinValue))
-                .ForMember(dest => dest.LeagueId, opt => opt.MapFrom(src => src.LeagueId))
-                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.PlayerTwoFirstName))
-                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.PlayerTwoLastName))
-                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.PlayerTwoPhotoUrl))
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.PlayerOne)) // Map PlayerOne as UserId
+                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.PlayerTwo)) // Map PlayerTwo as OpponentId
+                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.Id)) // Map Id to MatchId
+                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.PlayerOneScore ?? 0)) // Map PlayerOneScore, default to 0 if null
+                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.PlayerTwoScore ?? 0)) // Map PlayerTwoScore, default to 0 if null
+                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime ?? DateTime.MinValue)) // Map StartTime, default to DateTime.MinValue if null
+                .ForMember(dest => dest.LeagueId, opt => opt.MapFrom(src => src.LeagueId)) // Map LeagueId
+
+                // Mapping opponent details (Player Two)
+                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.PlayerTwoFirstName)) // Map PlayerTwoFirstName
+                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.PlayerTwoLastName)) // Map PlayerTwoLastName
+                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.PlayerTwoPhotoUrl)) // Map PlayerTwoPhotoUrl
+
+                // Mapping player details (Player One)
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.PlayerOneFirstName)) // Map PlayerOneFirstName
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.PlayerOneLastName)) // Map PlayerOneLastName
+                .ForMember(dest => dest.UserPhotoUrl, opt => opt.MapFrom(src => src.PlayerOnePhotoUrl)) // Map PlayerOnePhotoUrl
+
+                // Ignoring fields not relevant for single matches
                 .ForMember(dest => dest.TeamMateFirstName, opt => opt.Ignore()) // No team mate in single matches
                 .ForMember(dest => dest.TeamMateLastName, opt => opt.Ignore())
                 .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.Ignore())
@@ -102,27 +111,42 @@ namespace FoosballApi.Profiles
                 .ForMember(dest => dest.OpponentTwoLastName, opt => opt.Ignore())
                 .ForMember(dest => dest.OpponentTwoPhotoUrl, opt => opt.Ignore());
 
+
             CreateMap<AllMatchesModel, Match>()
                 .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.DoubleLeagueMatch)) // Assuming this is a double league match
                 .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => ETypeOfMatch.DoubleLeagueMatch.ToString())) // Convert enum to string
-                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.Id))
-                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TeamOne[0].UserId)) // Assuming the first player of TeamOne as the UserId
-                .ForMember(dest => dest.TeamMateId, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? (int?)src.TeamOne[1].UserId : null)) // If TeamOne has a second player
-                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.TeamTwo[0].UserId)) // Assuming the first player of TeamTwo as the OpponentId
-                .ForMember(dest => dest.OpponentTwoId, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? (int?)src.TeamTwo[1].UserId : null)) // If TeamTwo has a second player
-                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.TeamTwo[0].FirstName))
-                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.TeamTwo[0].LastName))
-                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.TeamTwo[0].PhotoUrl))
-                .ForMember(dest => dest.OpponentTwoFirstName, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? src.TeamTwo[1].FirstName : null))
-                .ForMember(dest => dest.OpponentTwoLastName, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? src.TeamTwo[1].LastName : null))
-                .ForMember(dest => dest.OpponentTwoPhotoUrl, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? src.TeamTwo[1].PhotoUrl : null))
-                .ForMember(dest => dest.TeamMateFirstName, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? src.TeamOne[1].FirstName : null))
-                .ForMember(dest => dest.TeamMateLastName, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? src.TeamOne[1].LastName : null))
-                .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? src.TeamOne[1].PhotoUrl : null))
-                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.TeamOneScore))
-                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.TeamTwoScore))
-                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime ?? DateTime.MinValue))
-                .ForMember(dest => dest.LeagueId, opt => opt.MapFrom(src => src.LeagueId));
+                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.Id)) // Map Id to MatchId
+
+                // Mapping Player IDs
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TeamOne[0].UserId)) // Map first player of TeamOne as UserId
+                .ForMember(dest => dest.TeamMateId, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? (int?)src.TeamOne[1].UserId : null)) // Map second player of TeamOne as TeamMateId if exists
+                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.TeamTwo[0].UserId)) // Map first player of TeamTwo as OpponentId
+                .ForMember(dest => dest.OpponentTwoId, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? (int?)src.TeamTwo[1].UserId : null)) // Map second player of TeamTwo as OpponentTwoId if exists
+
+                // Mapping Player Names and Photos (TeamOne)
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.TeamOne[0].FirstName)) // Map first player of TeamOne's first name
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.TeamOne[0].LastName)) // Map first player of TeamOne's last name
+                .ForMember(dest => dest.UserPhotoUrl, opt => opt.MapFrom(src => src.TeamOne[0].PhotoUrl)) // Map first player of TeamOne's photo URL
+                .ForMember(dest => dest.TeamMateFirstName, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? src.TeamOne[1].FirstName : null)) // Map second player of TeamOne's first name if exists
+                .ForMember(dest => dest.TeamMateLastName, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? src.TeamOne[1].LastName : null)) // Map second player of TeamOne's last name if exists
+                .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.MapFrom(src => src.TeamOne.Length > 1 ? src.TeamOne[1].PhotoUrl : null)) // Map second player of TeamOne's photo URL if exists
+
+                // Mapping Opponent Names and Photos (TeamTwo)
+                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.TeamTwo[0].FirstName)) // Map first player of TeamTwo's first name
+                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.TeamTwo[0].LastName)) // Map first player of TeamTwo's last name
+                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.TeamTwo[0].PhotoUrl)) // Map first player of TeamTwo's photo URL
+                .ForMember(dest => dest.OpponentTwoFirstName, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? src.TeamTwo[1].FirstName : null)) // Map second player of TeamTwo's first name if exists
+                .ForMember(dest => dest.OpponentTwoLastName, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? src.TeamTwo[1].LastName : null)) // Map second player of TeamTwo's last name if exists
+                .ForMember(dest => dest.OpponentTwoPhotoUrl, opt => opt.MapFrom(src => src.TeamTwo.Length > 1 ? src.TeamTwo[1].PhotoUrl : null)) // Map second player of TeamTwo's photo URL if exists
+
+                // Mapping Scores
+                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.TeamOneScore)) // Map TeamOneScore to UserScore
+                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.TeamTwoScore)) // Map TeamTwoScore to OpponentUserOrTeamScore
+
+                // Mapping Date and League
+                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime ?? DateTime.MinValue)) // Map StartTime to DateOfGame
+                .ForMember(dest => dest.LeagueId, opt => opt.MapFrom(src => src.LeagueId)); // Map LeagueId
+
         }
     }
 }
