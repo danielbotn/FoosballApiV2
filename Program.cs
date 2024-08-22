@@ -1,4 +1,5 @@
 using System.Text;
+using AutoMapper;
 using FoosballApi;
 using FoosballApi.Hub;
 using FoosballApi.Services;
@@ -124,7 +125,8 @@ builder.Services.AddSingleton<IMatchesRealtimeService>(provider =>
 {
     var hubContext = provider.GetRequiredService<IHubContext<MessageHub>>();
     var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
-    return new MatchesRealtimeService(hubContext, connectionString, httpContextAccessor);
+    var mapper = provider.GetRequiredService<IMapper>();
+    return new MatchesRealtimeService(hubContext, connectionString, httpContextAccessor, mapper);
 });
 
 
@@ -189,6 +191,8 @@ app.UseHangfireServer();
 app.UseHangfireDashboard();
 
 app.MapControllers();
+
+app.MapHub<MessageHub>("/messageHub");
 
 app.UseCors(builder => builder
   .WithOrigins("http://localhost:5173", "http://localhost:8000")
