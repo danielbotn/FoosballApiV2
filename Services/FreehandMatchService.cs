@@ -10,6 +10,7 @@ namespace FoosballApi.Services
     {
         Task<bool> CheckFreehandMatchPermission(int matchId, int userId);
         Task<IEnumerable<FreehandMatchModelExtended>> GetAllFreehandMatches(int userId);
+        Task<IEnumerable<FreehandMatchModelExtended>> GetFreehandMatchesByOrganisationId(int organisationId);
         Task<FreehandMatchModelExtended> GetFreehandMatchById(int matchId);
         Task<FreehandMatchModel> CreateFreehandMatch(int userId, int organisationId, FreehandMatchCreateDto freehandMatchCreateDto);
         Task<FreehandMatchModel> GetFreehandMatchByIdFromDatabase(int matchId);
@@ -116,6 +117,20 @@ namespace FoosballApi.Services
             }
         }
 
+        private async Task<List<FreehandMatchModel>> GetFreehandMatchesByOrganisation(int organisationId)
+        {
+            using var conn = new NpgsqlConnection(_connectionString);
+            var matches = await conn.QueryAsync<FreehandMatchModel>(
+                @"SELECT id as Id, player_one_id as PlayerOneId, player_two_id as PlayerTwoId, 
+                    start_time as StartTime, end_time as EndTime, player_one_score as PlayerOneScore,
+                    player_two_score as PlayerTwoScore, up_to as UpTo, game_finished as GameFinished,
+                    game_paused as GamePaused, organisation_id as OrganisationId
+                    FROM freehand_matches
+                    WHERE organisation_id = @organisation_id AND game_finished = false",
+            new { organisation_id = organisationId });
+            return matches.ToList();
+        }
+
         private async Task<string> GetFirstNameOfUser(int userId)
         {
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -164,7 +179,6 @@ namespace FoosballApi.Services
         {
             var data = await GetFreehandMatchesByUser(userId);
 
-            
             List<FreehandMatchModelExtended> freehandMatchModelExtendedList = new List<FreehandMatchModelExtended>();
 
             foreach (var item in data)
@@ -329,6 +343,44 @@ namespace FoosballApi.Services
                         id = freehandMatchModel.Id
                     });
             }
+        }
+
+        public async Task<IEnumerable<FreehandMatchModelExtended>> GetFreehandMatchesByOrganisationId(int organisationId)
+        {
+            var data = await GetFreehandMatchesByOrganisation(organisationId);
+
+            List<FreehandMatchModelExtended> freehandMatchModelExtendedList = new List<FreehandMatchModelExtended>();
+
+            foreach (var item in data)
+            {
+                TimeSpan? playingTime = null;
+                if (item.EndTime != null) {
+                    playingTime = item.EndTime - item.StartTime;
+                }
+                FreehandMatchModelExtended fmme = new FreehandMatchModelExtended
+                {
+                    Id = item.Id,
+                    PlayerOneId = item.PlayerOneId,
+                    PlayerOneFirstName = await GetFirstNameOfUser(item.PlayerOneId),
+                    PlayerOneLastName = await GetLastNameOfUser(item.PlayerOneId),
+                    PlayerOnePhotoUrl = await GetPhotoUrlOfUser(item.PlayerOneId),
+                    PlayerTwoId = item.PlayerTwoId,
+                    PlayerTwoFirstName = await GetFirstNameOfUser(item.PlayerTwoId),
+                    PlayerTwoLastName = await GetLastNameOfUser(item.PlayerTwoId),
+                    PlayerTwoPhotoUrl = await GetPhotoUrlOfUser(item.PlayerTwoId),
+                    StartTime = item.StartTime,
+                    EndTime = item.EndTime,
+                    PlayerOneScore = item.PlayerOneScore,
+                    PlayerTwoScore = item.PlayerTwoScore,
+                    UpTo = item.UpTo,
+                    GameFinished = item.GameFinished,
+                    GamePaused = item.GamePaused,
+                    TotalPlayingTime = playingTime != null ? ToReadableAgeString(playingTime.Value) : null,
+                };
+                freehandMatchModelExtendedList.Add(fmme);
+            }
+
+            return freehandMatchModelExtendedList;
         }
     }
 }

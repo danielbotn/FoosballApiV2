@@ -1,7 +1,4 @@
-using System.Collections.Generic;
 using FoosballApi.Models.Leagues;
-using System.Linq;
-using System;
 using FoosballApi.Models;
 using Npgsql;
 using Dapper;

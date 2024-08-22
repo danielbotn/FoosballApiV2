@@ -21,5 +21,20 @@ namespace FoosballApi.Models.Matches
         public int? UpTo { get; set; }
         public bool? GameFinished { get; set; }
         public bool? GamePaused { get; set; }
+
+        // New optional properties
+        public string OpponentOneFirstName { get; set; } = null;
+        public string OpponentOneLastName { get; set; } = null;
+        public string OpponentOnePhotoUrl { get; set; } = null;
+        public string OpponentTwoFirstName { get; set; } = null;
+        public string OpponentTwoLastName { get; set; } = null;
+        public string OpponentTwoPhotoUrl { get; set; } = null;
+        public string TeamMateFirstName { get; set; } = null;
+        public string TeamMateLastName { get; set; } = null;
+        public string TeamMatePhotoUrl { get; set; } = null;
+        // New fields
+        public string UserFirstName { get; set; } = null;
+        public string UserLastName { get; set; } = null;
+        public string UserPhotoUrl { get; set; } = null;
     }
 }
