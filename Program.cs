@@ -192,6 +192,8 @@ app.UseHangfireDashboard();
 
 app.MapControllers();
 
+app.MapHub<MessageHub>("/messageHub");
+
 app.UseCors(builder => builder
   .WithOrigins("http://localhost:5173", "http://localhost:8000")
   .AllowAnyMethod()
