@@ -1,4 +1,5 @@
 using System.Text;
+using AutoMapper;
 using FoosballApi;
 using FoosballApi.Hub;
 using FoosballApi.Services;
@@ -124,7 +125,8 @@ builder.Services.AddSingleton<IMatchesRealtimeService>(provider =>
 {
     var hubContext = provider.GetRequiredService<IHubContext<MessageHub>>();
     var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
-    return new MatchesRealtimeService(hubContext, connectionString, httpContextAccessor);
+    var mapper = provider.GetRequiredService<IMapper>();
+    return new MatchesRealtimeService(hubContext, connectionString, httpContextAccessor, mapper);
 });
 
 
