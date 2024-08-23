@@ -48,8 +48,34 @@ builder.Services.AddAuthentication(x =>
 })
 .AddJwtBearer(x =>
 {
+    x.RequireHttpsMetadata = false;
+    x.SaveToken = true;
+    x.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+    };
+
+    // Handle SignalR token retrieval from query string
     x.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            // Check if the request is for SignalR Hubs and has a token in the query string
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/messageHub"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        },
+
+        // Validate token upon receipt
         OnTokenValidated = context =>
         {
             var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
@@ -67,15 +93,6 @@ builder.Services.AddAuthentication(x =>
             }
             return Task.CompletedTask;
         }
-    };
-    x.RequireHttpsMetadata = false;
-    x.SaveToken = true;
-    x.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false,
-        ValidateAudience = false,
     };
 });
 
@@ -128,7 +145,6 @@ builder.Services.AddSingleton<IMatchesRealtimeService>(provider =>
     var mapper = provider.GetRequiredService<IMapper>();
     return new MatchesRealtimeService(hubContext, connectionString, httpContextAccessor, mapper);
 });
-
 
 // Register the Background Service
 builder.Services.AddHostedService<ScoreNotificationBackgroundService>();
@@ -192,7 +208,7 @@ app.UseHangfireDashboard();
 
 app.MapControllers();
 
-app.MapHub<MessageHub>("/messageHub");
+app.MapHub<MessageHub>("/messageHub").RequireAuthorization();
 
 app.UseCors(builder => builder
   .WithOrigins("http://localhost:5173", "http://localhost:8000")
