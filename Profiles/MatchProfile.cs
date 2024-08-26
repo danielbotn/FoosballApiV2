@@ -51,6 +51,7 @@ namespace FoosballApi.Profiles
 
 
             CreateMap<FreehandDoubleMatchModel, Match>()
+                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.DoubleFreehandMatch)) // Set TypeOfMatch to DoubleFreehandMatch
                 .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "DoubleFreehandMatch")) // Set TypeOfMatchName to "DoubleFreehandMatch"
 
@@ -169,7 +170,32 @@ namespace FoosballApi.Profiles
                 .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime))
                 .ForMember(dest => dest.LeagueId, opt => opt.Ignore()) // Assume LeagueId is not part of FreehandMatchRealTime
                 .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.FreehandMatch)) // Set type of match to FreehandMatch
-                .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "FreehandMatch")); // Set type of match name
+                .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "FreehandMatch"));
+
+            CreateMap<DoubleFreehandMatchRealTime, Match>()
+                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.MatchId))
+                .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.DoubleFreehandMatch)) // Assuming ETypeOfMatch.Double represents double matches
+                .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "DoubleFreehandMatch"))
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TeamAPlayerOneId)) // Mapping Team A Player One as User
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.TeamAPlayerOne.FirstName))
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.TeamAPlayerOne.LastName))
+                .ForMember(dest => dest.UserPhotoUrl, opt => opt.MapFrom(src => src.TeamAPlayerOne.PhotoUrl))
+                .ForMember(dest => dest.TeamMateId, opt => opt.MapFrom(src => src.TeamAPlayerTwoId))
+                .ForMember(dest => dest.TeamMateFirstName, opt => opt.MapFrom(src => src.TeamAPlayerTwo.FirstName))
+                .ForMember(dest => dest.TeamMateLastName, opt => opt.MapFrom(src => src.TeamAPlayerTwo.LastName))
+                .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.MapFrom(src => src.TeamAPlayerTwo.PhotoUrl))
+                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.TeamBPlayerOneId)) // Mapping Team B Player One as Opponent
+                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.TeamBPlayerOne.FirstName))
+                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.TeamBPlayerOne.LastName))
+                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.TeamBPlayerOne.PhotoUrl))
+                .ForMember(dest => dest.OpponentTwoId, opt => opt.MapFrom(src => src.TeamBPlayerTwoId))
+                .ForMember(dest => dest.OpponentTwoFirstName, opt => opt.MapFrom(src => src.TeamBPlayerTwo.FirstName))
+                .ForMember(dest => dest.OpponentTwoLastName, opt => opt.MapFrom(src => src.TeamBPlayerTwo.LastName))
+                .ForMember(dest => dest.OpponentTwoPhotoUrl, opt => opt.MapFrom(src => src.TeamBPlayerTwo.PhotoUrl))
+                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.TeamAScore)) // Mapping Team A Score as User Score
+                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.TeamBScore)) // Mapping Team B Score as Opponent Score
+                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime)) // Mapping Start Time as Date of Game
+                .ForMember(dest => dest.LeagueId, opt => opt.Ignore()); // Assuming LeagueId is not available in DoubleFreehandMatchRealTime
         }
     }
 }

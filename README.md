@@ -135,6 +135,102 @@ FOR EACH ROW
 WHEN (OLD.player_one_score IS DISTINCT FROM NEW.player_one_score OR
       OLD.player_two_score IS DISTINCT FROM NEW.player_two_score)
 EXECUTE FUNCTION notify_score_update();
+
+CREATE OR REPLACE FUNCTION notify_double_score_update() RETURNS trigger AS $$
+BEGIN
+    IF NEW.game_finished = false THEN
+        PERFORM pg_notify(
+            'double_score_update', 
+            json_build_object(
+                'match_id', NEW.id,
+                'team_a_player_one_id', NEW.player_one_team_a,
+                'team_a_player_two_id', NEW.player_two_team_a,
+                'team_b_player_one_id', NEW.player_one_team_b,
+                'team_b_player_two_id', NEW.player_two_team_b,
+                'team_a_score', NEW.team_a_score,
+                'team_b_score', NEW.team_b_score,
+                'start_time', NEW.start_time,
+                'end_time', NEW.end_time,
+                'up_to', NEW.up_to,
+                'game_finished', NEW.game_finished,
+                'game_paused', NEW.game_paused,
+                'organisation_id', NEW.organisation_id,
+                'team_a_player_one', (
+                    SELECT json_build_object(
+                        'id', u1.id,
+                        'first_name', COALESCE(u1.first_name, 'Unknown'),
+                        'last_name', COALESCE(u1.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u1.photo_url, 'default_image_url')
+                    )
+                    FROM users u1
+                    WHERE u1.id = NEW.player_one_team_a
+                ),
+                'team_a_player_two', (
+                    SELECT json_build_object(
+                        'id', u2.id,
+                        'first_name', COALESCE(u2.first_name, 'Unknown'),
+                        'last_name', COALESCE(u2.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u2.photo_url, 'default_image_url')
+                    )
+                    FROM users u2
+                    WHERE u2.id = NEW.player_two_team_a
+                ),
+                'team_b_player_one', (
+                    SELECT json_build_object(
+                        'id', u3.id,
+                        'first_name', COALESCE(u3.first_name, 'Unknown'),
+                        'last_name', COALESCE(u3.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u3.photo_url, 'default_image_url')
+                    )
+                    FROM users u3
+                    WHERE u3.id = NEW.player_one_team_b
+                ),
+                'team_b_player_two', (
+                    SELECT json_build_object(
+                        'id', u4.id,
+                        'first_name', COALESCE(u4.first_name, 'Unknown'),
+                        'last_name', COALESCE(u4.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u4.photo_url, 'default_image_url')
+                    )
+                    FROM users u4
+                    WHERE u4.id = NEW.player_two_team_b
+                ),
+                'last_goal', (
+                    SELECT json_build_object(
+                        'scored_by_user_id', g.scored_by_user_id,
+                        'scorer_team_score', g.scorer_team_score,
+                        'opponent_team_score', g.opponent_team_score,
+                        'time_of_goal', g.time_of_goal,
+                        'winner_goal', g.winner_goal,
+                        'scorer', (
+                            SELECT json_build_object(
+                                'id', u5.id,
+                                'first_name', COALESCE(u5.first_name, 'Unknown'),
+                                'last_name', COALESCE(u5.last_name, 'Unknown'),
+                                'photo_url', COALESCE(u5.photo_url, 'default_image_url')
+                            )
+                            FROM users u5
+                            WHERE u5.id = g.scored_by_user_id
+                        )
+                    )
+                    FROM freehand_double_goals g
+                    WHERE g.double_match_id = NEW.id
+                    ORDER BY g.time_of_goal DESC
+                    LIMIT 1
+                )
+            )::text
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER double_score_update_trigger
+AFTER UPDATE OF team_a_score, team_b_score ON freehand_double_matches
+FOR EACH ROW
+WHEN (OLD.team_a_score IS DISTINCT FROM NEW.team_a_score OR
+      OLD.team_b_score IS DISTINCT FROM NEW.team_b_score)
+EXECUTE FUNCTION notify_double_score_update();
 ```
 
 ## Thanks
