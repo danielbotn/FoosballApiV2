@@ -88,7 +88,7 @@ public class MatchesRealtimeService : IMatchesRealtimeService
         };
 
         // Listen to both 'score_update' and 'double_score_update'
-        using (var cmd = new NpgsqlCommand("LISTEN score_update; LISTEN double_score_update;", connection))
+        using (var cmd = new NpgsqlCommand("LISTEN score_update; LISTEN double_score_update; Listen double_score_insert;", connection))
         {
             await cmd.ExecuteNonQueryAsync(stoppingToken);
         }

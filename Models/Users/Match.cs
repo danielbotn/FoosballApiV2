@@ -1,5 +1,6 @@
 using System;
 using FoosballApi.Enums;
+using FoosballApi.Models.Matches;
 
 namespace FoosballApi.Models
 {
@@ -28,5 +29,6 @@ namespace FoosballApi.Models
         public int OpponentUserOrTeamScore { get; set; }
         public DateTime DateOfGame { get; set; }
         public int? LeagueId { get; set; }
+        public GoalInfo LastGoal { get; set; } = null;
     }
 }
