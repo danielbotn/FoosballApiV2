@@ -136,6 +136,55 @@ WHEN (OLD.player_one_score IS DISTINCT FROM NEW.player_one_score OR
       OLD.player_two_score IS DISTINCT FROM NEW.player_two_score)
 EXECUTE FUNCTION notify_score_update();
 
+CREATE TRIGGER score_insert_trigger
+AFTER INSERT ON freehand_matches
+FOR EACH ROW
+EXECUTE FUNCTION notify_score_insert();
+
+CREATE OR REPLACE FUNCTION notify_score_insert() RETURNS trigger AS $$
+BEGIN
+    IF NEW.game_finished = false THEN
+        PERFORM pg_notify(
+            'score_update', 
+            json_build_object(
+                'match_id', NEW.id,
+                'player_one_id', NEW.player_one_id,
+                'player_two_id', NEW.player_two_id,
+                'player_one_score', NEW.player_one_score,
+                'player_two_score', NEW.player_two_score,
+                'start_time', NEW.start_time,
+                'end_time', NEW.end_time,
+                'up_to', NEW.up_to,
+                'game_finished', NEW.game_finished,
+                'game_paused', NEW.game_paused,
+                'organisation_id', NEW.organisation_id,
+                'player_one', (
+                    SELECT json_build_object(
+                        'id', u1.id,
+                        'first_name', COALESCE(u1.first_name, 'Unknown'),
+                        'last_name', COALESCE(u1.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u1.photo_url, 'default_image_url')
+                    )
+                    FROM users u1
+                    WHERE u1.id = NEW.player_one_id
+                ),
+                'player_two', (
+                    SELECT json_build_object(
+                        'id', u2.id,
+                        'first_name', COALESCE(u2.first_name, 'Unknown'),
+                        'last_name', COALESCE(u2.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u2.photo_url, 'default_image_url')
+                    )
+                    FROM users u2
+                    WHERE u2.id = NEW.player_two_id
+                )
+            )::text
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION notify_double_score_update() RETURNS trigger AS $$
 BEGIN
     IF NEW.game_finished = false THEN
