@@ -378,6 +378,85 @@ CREATE TRIGGER double_score_insert_trigger
 AFTER INSERT ON freehand_double_matches
 FOR EACH ROW
 EXECUTE FUNCTION notify_double_score_insert();
+
+CREATE OR REPLACE FUNCTION notify_single_league_score_update() RETURNS trigger AS $$
+DECLARE
+    last_goal json;
+BEGIN
+    -- Check if the match is ongoing and not ended
+    IF NEW.match_ended = false AND NEW.match_started = true THEN
+        -- Get the most recent goal information for this match (if any)
+        SELECT json_build_object(
+            'scored_by_user_id', g.scored_by_user_id,
+            'scorer_team_score', g.scorer_score,
+            'opponent_team_score', g.opponent_score,
+            'time_of_goal', g.time_of_goal,
+            'winner_goal', g.winner_goal,
+            'scorer', (
+                SELECT json_build_object(
+                    'id', u1.id,
+                    'first_name', COALESCE(u1.first_name, 'Unknown'),
+                    'last_name', COALESCE(u1.last_name, 'Unknown'),
+                    'photo_url', COALESCE(u1.photo_url, 'default_image_url')
+                )
+                FROM users u1
+                WHERE u1.id = g.scored_by_user_id
+            )
+        ) INTO last_goal
+        FROM single_league_goals g
+        WHERE g.match_id = NEW.id
+        ORDER BY g.time_of_goal DESC
+        LIMIT 1;
+
+        -- Notify the listeners with match and goal information
+        PERFORM pg_notify(
+            'single_league_score_update', 
+            json_build_object(
+                'match_id', NEW.id,
+                'player_one_id', NEW.player_one,
+                'player_two_id', NEW.player_two,
+                'player_one_score', NEW.player_one_score,
+                'player_two_score', NEW.player_two_score,
+                'start_time', NEW.start_time,
+                'end_time', NEW.end_time,
+                'up_to', NEW.up_to,
+                'match_ended', NEW.match_ended,
+                'match_paused', NEW.match_paused,
+                'organisation_id', NEW.organisation_id,
+                'LastGoal', last_goal,
+                'player_one', (
+                    SELECT json_build_object(
+                        'id', u1.id,
+                        'first_name', COALESCE(u1.first_name, 'Unknown'),
+                        'last_name', COALESCE(u1.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u1.photo_url, 'default_image_url')
+                    )
+                    FROM users u1
+                    WHERE u1.id = NEW.player_one
+                ),
+                'player_two', (
+                    SELECT json_build_object(
+                        'id', u2.id,
+                        'first_name', COALESCE(u2.first_name, 'Unknown'),
+                        'last_name', COALESCE(u2.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u2.photo_url, 'default_image_url')
+                    )
+                    FROM users u2
+                    WHERE u2.id = NEW.player_two
+                )
+            )::text
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER notify_single_league_score_update_trigger
+AFTER UPDATE ON single_league_matches
+FOR EACH ROW
+WHEN (NEW.match_started = true AND NEW.match_ended = false)
+EXECUTE FUNCTION notify_single_league_score_update();
+
 ```
 
 ## Thanks

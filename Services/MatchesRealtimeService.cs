@@ -49,7 +49,19 @@ public class MatchesRealtimeService : IMatchesRealtimeService
 
             try
             {
-                // Check which channel (trigger) sent the notification
+                if (e.Channel == "single_league_score_update")
+                {
+                    var updatedSingleLeagueMatch = JsonConvert.DeserializeObject<SingleLeagueMatchRealTime>(e.Payload);
+                    var matchMapped = _mapper.Map<Match>(updatedSingleLeagueMatch);
+                    string currentOrganisationId = updatedSingleLeagueMatch.OrganisationId.ToString();
+
+                    if (!string.IsNullOrEmpty(currentOrganisationId))
+                    {
+                        // Broadcast the double match update to the specific organization group
+                        await _hubContext.Clients.Group(currentOrganisationId).SendAsync("SendLiveMatches", matchMapped, stoppingToken);
+                    }
+                }
+                
                 if (e.Channel == "double_score_update")
                 {
                     // Deserialize as FreehandDoubleMatchRealTime
@@ -88,7 +100,7 @@ public class MatchesRealtimeService : IMatchesRealtimeService
         };
 
         // Listen to both 'score_update' and 'double_score_update'
-        using (var cmd = new NpgsqlCommand("LISTEN score_update; LISTEN double_score_update; Listen double_score_insert;", connection))
+        using (var cmd = new NpgsqlCommand("LISTEN score_update; LISTEN double_score_update; Listen double_score_insert; LISTEN single_league_score_update;", connection))
         {
             await cmd.ExecuteNonQueryAsync(stoppingToken);
         }

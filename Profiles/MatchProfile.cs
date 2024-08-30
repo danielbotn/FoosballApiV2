@@ -196,6 +196,28 @@ namespace FoosballApi.Profiles
                 .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.TeamBScore)) // Mapping Team B Score as Opponent Score
                 .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime)) // Mapping Start Time as Date of Game
                 .ForMember(dest => dest.LeagueId, opt => opt.Ignore()); // Assuming LeagueId is not available in DoubleFreehandMatchRealTime
+            
+            CreateMap<SingleLeagueMatchRealTime, Match>()
+                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.MatchId))
+                .ForMember(dest => dest.LeagueId, opt => opt.MapFrom(src => src.LeagueId))
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.PlayerOneId))
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.PlayerOne.FirstName))
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.PlayerOne.LastName))
+                .ForMember(dest => dest.UserPhotoUrl, opt => opt.MapFrom(src => src.PlayerOne.PhotoUrl))
+                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.PlayerTwoId))
+                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.PlayerTwo.FirstName))
+                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.PlayerTwo.LastName))
+                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.PlayerTwo.PhotoUrl))
+                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.PlayerOneScore))
+                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.PlayerTwoScore))
+                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime ?? DateTime.Now)) // Handle null StartTime
+                .ForMember(dest => dest.LastGoal, opt => opt.MapFrom(src => src.LastGoal))
+                .ForMember(dest => dest.TeamMateId, opt => opt.Ignore()) // Ignore if not relevant
+                .ForMember(dest => dest.TeamMateFirstName, opt => opt.Ignore()) // Ignore if not relevant
+                .ForMember(dest => dest.TeamMateLastName, opt => opt.Ignore()) // Ignore if not relevant
+                .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.Ignore()) // Ignore if not relevant
+                .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.SingleLeagueMatch)) // Assuming ETypeOfMatch.Double represents double matches
+                .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "SingleLeagueMatch"));
         }
     }
 }

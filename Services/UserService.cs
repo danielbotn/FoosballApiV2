@@ -1405,7 +1405,7 @@ namespace FoosballApi.Services
                     player_one_score as PlayerOneScore, player_two_score as PlayerTwoScore, 
                     end_time as EndTime, game_finished as GameFinished
                     FROM freehand_matches
-                    WHERE (player_one_id = @userId OR player_two_id = @userId) AND game_finished = true
+                    WHERE (player_one_id = @userId OR player_two_id = @userId) AND game_finished = true AND end_time IS NOT NULL
                     ORDER BY id DESC
                     OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY",
                     new { userId, offset = (pageNumber - 1) * pageSize, pageSize });
