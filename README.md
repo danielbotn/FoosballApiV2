@@ -457,6 +457,112 @@ FOR EACH ROW
 WHEN (NEW.match_started = true AND NEW.match_ended = false)
 EXECUTE FUNCTION notify_single_league_score_update();
 
+CREATE OR REPLACE FUNCTION notify_double_league_score_update() RETURNS trigger AS $$
+DECLARE
+    last_goal json;
+    league_up_to int;
+    league_organisation_id int;
+BEGIN
+    RAISE NOTICE 'Trigger fired for match_id %', NEW.id;
+
+    -- Check if the match is ongoing and not ended
+    IF NEW.match_ended = false AND NEW.match_started = true THEN
+        RAISE NOTICE 'Match is ongoing for match_id %', NEW.id;
+
+        -- Fetch the `up_to` and `organisation_id` values from the `leagues` table
+        SELECT l.up_to, l.organisation_id INTO league_up_to, league_organisation_id
+        FROM leagues l
+        WHERE l.id = NEW.league_id;
+
+        RAISE NOTICE 'Fetched league data for league_id %', NEW.league_id;
+
+        -- Get the most recent goal information for this match (if any)
+        SELECT json_build_object(
+            'scored_by_user_id', g.scored_by_user_id,
+            'scorer_team_score', g.scorer_score,
+            'opponent_team_score', g.opponent_score,
+            'time_of_goal', g.time_of_goal,
+            'winner_goal', g.winner_goal,
+            'scorer', (
+                SELECT json_build_object(
+                    'id', u1.id,
+                    'first_name', COALESCE(u1.first_name, 'Unknown'),
+                    'last_name', COALESCE(u1.last_name, 'Unknown'),
+                    'photo_url', COALESCE(u1.photo_url, 'default_image_url')
+                )
+                FROM users u1
+                WHERE u1.id = g.scored_by_user_id
+            )
+        ) INTO last_goal
+        FROM double_league_goals g
+        WHERE g.match_id = NEW.id
+        ORDER BY g.time_of_goal DESC
+        LIMIT 1;
+
+        RAISE NOTICE 'Fetched last goal for match_id %', NEW.id;
+
+        -- Notify the listeners with match and goal information
+        PERFORM pg_notify(
+            'double_league_score_update', 
+            json_build_object(
+                'match_id', NEW.id,
+                'team_one_id', NEW.team_one_id,
+                'team_two_id', NEW.team_two_id,
+                'team_one_score', NEW.team_one_score,
+                'team_two_score', NEW.team_two_score,
+                'start_time', NEW.start_time,
+                'end_time', NEW.end_time,
+                'up_to', league_up_to,
+                'match_ended', NEW.match_ended,
+                'match_paused', NEW.match_paused,
+                'organisation_id', league_organisation_id,
+                'LastGoal', last_goal,
+                'team_one_players', (
+                    SELECT json_agg(json_build_object(
+                        'id', u.id,
+                        'first_name', COALESCE(u.first_name, 'Unknown'),
+                        'last_name', COALESCE(u.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u.photo_url, 'default_image_url')
+                    ))
+                    FROM double_league_players dlp
+                    JOIN users u ON dlp.user_id = u.id
+                    WHERE dlp.double_league_team_id = NEW.team_one_id
+                ),
+                'team_two_players', (
+                    SELECT json_agg(json_build_object(
+                        'id', u.id,
+                        'first_name', COALESCE(u.first_name, 'Unknown'),
+                        'last_name', COALESCE(u.last_name, 'Unknown'),
+                        'photo_url', COALESCE(u.photo_url, 'default_image_url')
+                    ))
+                    FROM double_league_players dlp
+                    JOIN users u ON dlp.user_id = u.id
+                    WHERE dlp.double_league_team_id = NEW.team_two_id
+                )
+            )::text
+        );
+        RAISE NOTICE 'THE END IS HERE %', NEW.id;
+    ELSE
+        RAISE NOTICE 'Match is not ongoing or already ended for match_id %', NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER notify_double_league_score_update_trigger
+AFTER UPDATE ON double_league_matches
+FOR EACH ROW
+WHEN (NEW.match_started = true AND NEW.match_ended = false)
+EXECUTE FUNCTION notify_double_league_score_update();
+
+
+CREATE TRIGGER notify_double_league_insert_trigger
+AFTER INSERT ON double_league_matches
+FOR EACH ROW
+EXECUTE FUNCTION notify_double_league_score_update();
+
+
 ```
 
 ## Thanks

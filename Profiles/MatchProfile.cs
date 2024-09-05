@@ -218,6 +218,32 @@ namespace FoosballApi.Profiles
                 .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.Ignore()) // Ignore if not relevant
                 .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.SingleLeagueMatch)) // Assuming ETypeOfMatch.Double represents double matches
                 .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "SingleLeagueMatch"));
+        
+            CreateMap<DoubleLeagueMatchRealTime, Match>()
+                .ForMember(dest => dest.MatchId, opt => opt.MapFrom(src => src.MatchId))
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.TeamOnePlayers[0].Id)) // Assuming the first player in team one is the main user
+                .ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.TeamOnePlayers[0].FirstName))
+                .ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.TeamOnePlayers[0].LastName))
+                .ForMember(dest => dest.UserPhotoUrl, opt => opt.MapFrom(src => src.TeamOnePlayers[0].PhotoUrl))
+                .ForMember(dest => dest.TeamMateId, opt => opt.MapFrom(src => src.TeamOnePlayers.Count > 1 ? (int?)src.TeamOnePlayers[1].Id : null)) // Handle if there's a second player
+                .ForMember(dest => dest.TeamMateFirstName, opt => opt.MapFrom(src => src.TeamOnePlayers.Count > 1 ? src.TeamOnePlayers[1].FirstName : null))
+                .ForMember(dest => dest.TeamMateLastName, opt => opt.MapFrom(src => src.TeamOnePlayers.Count > 1 ? src.TeamOnePlayers[1].LastName : null))
+                .ForMember(dest => dest.TeamMatePhotoUrl, opt => opt.MapFrom(src => src.TeamOnePlayers.Count > 1 ? src.TeamOnePlayers[1].PhotoUrl : null))
+                .ForMember(dest => dest.OpponentId, opt => opt.MapFrom(src => src.TeamTwoPlayers[0].Id))
+                .ForMember(dest => dest.OpponentOneFirstName, opt => opt.MapFrom(src => src.TeamTwoPlayers[0].FirstName))
+                .ForMember(dest => dest.OpponentOneLastName, opt => opt.MapFrom(src => src.TeamTwoPlayers[0].LastName))
+                .ForMember(dest => dest.OpponentOnePhotoUrl, opt => opt.MapFrom(src => src.TeamTwoPlayers[0].PhotoUrl))
+                .ForMember(dest => dest.OpponentTwoId, opt => opt.MapFrom(src => src.TeamTwoPlayers.Count > 1 ? (int?)src.TeamTwoPlayers[1].Id : null))
+                .ForMember(dest => dest.OpponentTwoFirstName, opt => opt.MapFrom(src => src.TeamTwoPlayers.Count > 1 ? src.TeamTwoPlayers[1].FirstName : null))
+                .ForMember(dest => dest.OpponentTwoLastName, opt => opt.MapFrom(src => src.TeamTwoPlayers.Count > 1 ? src.TeamTwoPlayers[1].LastName : null))
+                .ForMember(dest => dest.OpponentTwoPhotoUrl, opt => opt.MapFrom(src => src.TeamTwoPlayers.Count > 1 ? src.TeamTwoPlayers[1].PhotoUrl : null))
+                .ForMember(dest => dest.UserScore, opt => opt.MapFrom(src => src.TeamOneScore))
+                .ForMember(dest => dest.OpponentUserOrTeamScore, opt => opt.MapFrom(src => src.TeamTwoScore))
+                .ForMember(dest => dest.DateOfGame, opt => opt.MapFrom(src => src.StartTime))
+                .ForMember(dest => dest.LastGoal, opt => opt.MapFrom(src => src.LastGoal))
+                .ForMember(dest => dest.LeagueId, opt => opt.MapFrom(src => src.LeagueId))
+                .ForMember(dest => dest.TypeOfMatch, opt => opt.MapFrom(src => ETypeOfMatch.DoubleLeagueMatch)) // Assuming this is a double match
+                .ForMember(dest => dest.TypeOfMatchName, opt => opt.MapFrom(src => "DoubleLeagueMatch"));
         }
     }
 }
