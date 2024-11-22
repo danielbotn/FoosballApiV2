@@ -153,5 +153,9 @@ namespace FoosballApi.Models.Cms
         public string ongoing { get; set; }
         public string singleLeague { get; set; }
         public string doubleLeague { get; set; }
+        public string delete { get; set; }
+        public string deleteLeague { get; set; }
+        public string edit { get; set; }
+        public string deleteLeagueAreYouSure { get; set; }
     }
 }
