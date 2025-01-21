@@ -329,7 +329,7 @@ namespace FoosballApi.Services
                 var q = await conn.QueryFirstAsync<SingleLeagueMatchModel>(
                     @"SELECT id as Id, player_one as PlayerOne, player_two as PlayerTwo
                     FROM single_league_matches
-                    WHERE id = @id AND player_one = @user_id OR player_one = @user_Id",
+                    WHERE id = @id AND player_one = @user_id OR player_two = @user_Id",
                 new { id = matchId, user_id = userId,  });
                 
                query = q;
