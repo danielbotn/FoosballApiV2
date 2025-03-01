@@ -157,5 +157,15 @@ namespace FoosballApi.Models.Cms
         public string deleteLeague { get; set; }
         public string edit { get; set; }
         public string deleteLeagueAreYouSure { get; set; }
+
+        public string allFixtures { get; set; }
+        public string myFixtures { get; set; }
+        public string matchPaused { get; set; }
+        public string pleaseFillOutAllFields { get; set; }
+        public string successfullyUpdatedUserInformation { get; set; }
+        public string couldNotUpdateUserInformation { get; set; }
+        public string changeUserInfo { get; set; }
+        public string enterFirstName { get; set; }
+        public string enterLastName { get; set; }
     }
 }
