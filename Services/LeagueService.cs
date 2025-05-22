@@ -74,17 +74,17 @@ namespace FoosballApi.Services
             if (leagueType == TypeOfLeague.single_league)
             {
                 query = @"
-            SELECT COUNT(*) 
-            FROM league_players 
-            WHERE league_id = @LeagueId AND user_id = @UserId";
+                  SELECT COUNT(*) 
+                  FROM league_players 
+                  WHERE league_id = @LeagueId AND user_id = @UserId";
             }
             else // double league
             {
                 query = @"
-            SELECT COUNT(*) 
-            FROM double_league_players dlp
-            JOIN double_league_teams dlt ON dlp.double_league_team_id = dlt.id
-            WHERE dlt.league_id = @LeagueId AND dlp.user_id = @UserId";
+                  SELECT COUNT(*) 
+                  FROM double_league_players dlp
+                  JOIN double_league_teams dlt ON dlp.double_league_team_id = dlt.id
+                  WHERE dlt.league_id = @LeagueId AND dlp.user_id = @UserId";
             }
 
             int? count = await conn.ExecuteScalarAsync<int?>(query, new { LeagueId = leagueId, UserId = userId });
