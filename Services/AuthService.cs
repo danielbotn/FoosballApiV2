@@ -8,6 +8,7 @@ using FoosballApi.Models.Accounts;
 using FoosballApi.Models.OldRefreshTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using FoosballApi.Dtos.Users;
 
 namespace FoosballApi.Services
 {
@@ -29,6 +30,7 @@ namespace FoosballApi.Services
         Task<(bool, int)> IsOldRefreshTokenInDatabase(User user, string refreshToken);
         Task DeleteOldRefreshTokenById(int id);
         Task DeleteOldTokens(int? organisationId);
+        Task<User> RegisterGoogleUser(GoogleUserDto dto);
     }
 
     public class AuthService : IAuthService
@@ -37,11 +39,11 @@ namespace FoosballApi.Services
 
         public AuthService()
         {
-            #if DEBUG
-                _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
-            #else
+#if DEBUG
+            _connectionString = Environment.GetEnvironmentVariable("FoosballDbDev");
+#else
                 _connectionString = Environment.GetEnvironmentVariable("FoosballDbProd");
-            #endif
+#endif
         }
 
         public async Task<User> Authenticate(string email, string password)
@@ -56,12 +58,12 @@ namespace FoosballApi.Services
 
                 if (user == null)
                     return null;
-                
+
                 bool verified = BCrypt.Net.BCrypt.Verify(password, user.Password);
 
                 if (!verified)
                     return null;
-                
+
                 return user;
             }
         }
@@ -84,19 +86,21 @@ namespace FoosballApi.Services
             tmpUser.LastName = user.LastName;
             tmpUser.Created_at = now;
             tmpUser.PhotoUrl = "https://avatars.dicebear.com/7.x/personas/png?seed=" + randomNumber;
-            
+
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Execute(
-                    @"INSERT INTO Users (email, password, first_name, last_name, created_at, photo_url)
-                    VALUES (@email, @password, @first_name, @last_name, @created_at, @photo_url)",
-                    new {
-                        email = tmpUser.Email, 
-                        password = tmpUser.Password, 
-                        first_name = tmpUser.FirstName, 
-                        last_name = tmpUser.LastName, 
-                        created_at = tmpUser.Created_at, 
-                        photo_url = tmpUser.PhotoUrl
+                    @"INSERT INTO Users (email, password, first_name, last_name, created_at, photo_url, provider)
+                    VALUES (@email, @password, @first_name, @last_name, @created_at, @photo_url, @provider)",
+                    new
+                    {
+                        email = tmpUser.Email,
+                        password = tmpUser.Password,
+                        first_name = tmpUser.FirstName,
+                        last_name = tmpUser.LastName,
+                        created_at = tmpUser.Created_at,
+                        photo_url = tmpUser.PhotoUrl,
+                        provider = "LOCAL"
                     });
             }
         }
@@ -120,25 +124,25 @@ namespace FoosballApi.Services
                     @"SELECT id as Id, user_id as UserId, verification_token as VerificationToken, password_reset_token as PasswordResetToken,
                     password_reset_token_expires as PasswordResetTokenExpires, has_verified as HasVerified
                     FROM verifications WHERE user_id = @user_id",
-                    new { user_id =  userId});
+                    new { user_id = userId });
 
             return user;
         }
 
         private async Task UpdateVerification(VerificationModel vModel)
         {
-             using var conn = new NpgsqlConnection(_connectionString);
-             await conn.ExecuteAsync(
-                @"UPDATE verifications 
+            using var conn = new NpgsqlConnection(_connectionString);
+            await conn.ExecuteAsync(
+               @"UPDATE verifications 
                 SET password_reset_token = @password_reset_token,
                 password_reset_token_expires = @password_reset_token_expires::timestamp without time zone
                 WHERE id = @id",
-                new
-                {
-                    password_reset_token = vModel.PasswordResetToken,
-                    password_reset_token_expires = vModel.PasswordResetTokenExpires,
-                    id = vModel.Id
-                });
+               new
+               {
+                   password_reset_token = vModel.PasswordResetToken,
+                   password_reset_token_expires = vModel.PasswordResetTokenExpires,
+                   id = vModel.Id
+               });
         }
 
         public async Task<VerificationModel> ForgotPassword(ForgotPasswordRequest model, string origin)
@@ -148,7 +152,7 @@ namespace FoosballApi.Services
             if (account == null) return null;
 
             VerificationModel vModel = await GetVerificationInfo(account.Id);
-            
+
             // create reset token that expires after 1 day
             vModel.PasswordResetToken = RandomTokenString();
             vModel.PasswordResetTokenExpires = DateTime.UtcNow.AddDays(1);
@@ -240,20 +244,51 @@ namespace FoosballApi.Services
             vModel.UserId = user.Id;
             vModel.VerificationToken = GetRandomTokenString();
             vModel.HasVerified = false;
-            
+
             // using dapper
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Execute(
                     @"INSERT INTO Verifications (user_id, verification_token, has_verified)
                     VALUES (@user_id, @verification_token, @has_verified)",
-                    new {user_id = user.Id, verification_token = vModel.VerificationToken, has_verified = vModel.HasVerified});
+                    new { user_id = user.Id, verification_token = vModel.VerificationToken, has_verified = vModel.HasVerified });
             }
 
             return vModel;
         }
 
-        private string GetRandomTokenString() 
+
+        public async Task<User> RegisterGoogleUser(GoogleUserDto dto)
+        {
+
+            using var conn = new NpgsqlConnection(_connectionString);
+            const string selectSql = "SELECT * FROM users WHERE email = @Email";
+            var existingUser = await conn.QueryFirstOrDefaultAsync<User>(selectSql, new { dto.Email });
+
+            if (existingUser != null)
+                return existingUser;
+
+            var newUser = new User
+            {
+                Email = dto.Email,
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                PhotoUrl = dto.PictureUrl,
+                GoogleId = dto.GoogleId,
+                AuthProvider = "Google",
+                Created_at = DateTime.UtcNow
+            };
+
+            const string insertSql = @"
+                INSERT INTO users (email, first_name, last_name, picture_url, google_id, auth_provider, created_at)
+                VALUES (@Email, @FirstName, @LastName, @PictureUrl, @GoogleId, @AuthProvider, @Created_at)";
+
+            await conn.ExecuteAsync(insertSql, newUser);
+
+            return newUser;
+        }
+
+        private string GetRandomTokenString()
         {
             var randomNumber = new byte[40]; // or 32
             string token = "";
@@ -395,12 +430,13 @@ namespace FoosballApi.Services
                     SET refresh_token = @refresh_token, 
                     refresh_token_expiry_time = @refresh_token_expiry_time
                     WHERE id = @id",
-                    new { 
+                    new
+                    {
                         refresh_token = refreshToken,
                         refresh_token_expiry_time = DateTime.Now.AddDays(7),
                         id = userId
-                     });
-                
+                    });
+
                 if (updateSuccessfull > 0)
                     result = true;
             }
@@ -500,7 +536,7 @@ namespace FoosballApi.Services
 
             if (data == 0)
                 result = false;
-            
+
             return result;
         }
 
@@ -514,11 +550,12 @@ namespace FoosballApi.Services
                     @"UPDATE users 
                     SET password = @password
                     WHERE id = @id",
-                    new { 
+                    new
+                    {
                         password = passwordHash,
                         id = userId
-                     });
-                
+                    });
+
                 if (updateSuccessfull > 0)
                     result = true;
             }
@@ -526,7 +563,7 @@ namespace FoosballApi.Services
             return result;
         }
 
-       private async Task CleanVerificationAfterUpdate(int userId)
+        private async Task CleanVerificationAfterUpdate(int userId)
         {
             using var conn = new NpgsqlConnection(_connectionString);
 

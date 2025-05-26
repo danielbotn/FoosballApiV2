@@ -737,3 +737,7 @@ ADD COLUMN discord_webhook_url TEXT;
 
 ALTER TABLE organisations
 ADD COLUMN microsoft_teams_webhook_url TEXT;
+
+ALTER TABLE users
+ADD COLUMN auth_provider text DEFAULT 'LOCAL'
+ADD COLUMN google_id text;
