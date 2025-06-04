@@ -70,8 +70,18 @@ namespace FoosballApi.Controllers
             try
             {
                 // 1. Validate Google ID token
+                var platform = model.Platform?.ToLower();
+                string googleClientId;
 
-                var googleClientId = Environment.GetEnvironmentVariable("googleClientId");
+                try
+                {
+                    googleClientId = GetGoogleClientIdForPlatform(model.Platform);
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+
                 var payload = await GoogleJsonWebSignature.ValidateAsync(model.IdToken,
                     new GoogleJsonWebSignature.ValidationSettings
                     {
@@ -123,6 +133,17 @@ namespace FoosballApi.Controllers
             {
                 return StatusCode(500, e.Message);
             }
+        }
+
+
+        private string GetGoogleClientIdForPlatform(string platform)
+        {
+            return platform?.ToLower() switch
+            {
+                "android" => Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID_ANDROID"),
+                "ios" => Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID_IOS"),
+                _ => throw new ArgumentException("Invalid platform specified")
+            };
         }
 
         [HttpPost("register")]
