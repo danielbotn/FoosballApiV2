@@ -130,16 +130,6 @@ namespace FoosballApi.Controllers
             }
         }
 
-        private string GetGoogleClientIdForPlatform(string platform)
-        {
-            return platform?.ToLower() switch
-            {
-                "android" => Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID_ANDROID"),
-                "ios" => Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID_IOS"),
-                _ => throw new ArgumentException("Invalid platform specified")
-            };
-        }
-
         [HttpPost("register")]
         [ProducesResponseType(typeof(UserReadDto), StatusCodes.Status201Created)]
         public async Task<ActionResult> CreateUser(UserCreateDto userCreateDto)
