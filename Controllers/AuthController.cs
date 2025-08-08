@@ -7,6 +7,7 @@ using FoosballApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Google.Apis.Auth;
+using FoosballApi.Models.Google;
 
 namespace FoosballApi.Controllers
 {
@@ -69,39 +70,37 @@ namespace FoosballApi.Controllers
         {
             try
             {
-                // 1. Validate Google ID token
-                var platform = model.Platform?.ToLower();
-                string googleClientId;
-
-                try
+                // 1. Use the access token to get user info from Google API
+                var userInfo = await _authService.GetGoogleUserInfoFromAccessToken(model.AccessToken);
+                
+                if (userInfo == null)
                 {
-                    googleClientId = GetGoogleClientIdForPlatform(model.Platform);
+                    return Unauthorized("Invalid Google access token.");
                 }
-                catch (ArgumentException ex)
-                {
-                    return BadRequest(ex.Message);
-                }
-
-                var payload = await GoogleJsonWebSignature.ValidateAsync(model.IdToken,
-                    new GoogleJsonWebSignature.ValidationSettings
-                    {
-                        Audience = new[] { googleClientId } // <-- inject or load this from config
-                    });
 
                 // 2. Find user by email
-                var user = _userService.GetUserByEmail(payload.Email);
+                var user = _userService.GetUserByEmail(userInfo.Email);
 
                 // 3. If user doesn't exist, register them
                 if (user == null)
                 {
                     user = await _authService.RegisterGoogleUser(new GoogleUserDto
                     {
-                        Email = payload.Email,
-                        FirstName = payload.GivenName,
-                        LastName = payload.FamilyName,
-                        PictureUrl = payload.Picture,
-                        GoogleId = payload.Subject
+                        Email = userInfo.Email,
+                        FirstName = userInfo.GivenName,
+                        LastName = userInfo.FamilyName,
+                        PictureUrl = userInfo.Picture,
+                        GoogleId = userInfo.Id
                     });
+
+                    _authService.AddVerificationInfo(user, Request.Headers["origin"], true);
+                }
+                bool isEmailAlreadyRegisteredLocally = user != null && user.Email == userInfo.Email && user.GoogleId == null;
+
+                if (isEmailAlreadyRegisteredLocally)
+                {
+                    // means that email is already in database
+                    return Unauthorized("Email is already registered");
                 }
 
                 // 4. Create JWT and refresh tokens
@@ -125,16 +124,11 @@ namespace FoosballApi.Controllers
 
                 return Ok(userLogin);
             }
-            catch (InvalidJwtException)
-            {
-                return Unauthorized("Invalid Google ID token.");
-            }
             catch (Exception e)
             {
                 return StatusCode(500, e.Message);
             }
         }
-
 
         private string GetGoogleClientIdForPlatform(string platform)
         {

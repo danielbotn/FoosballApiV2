@@ -9,6 +9,8 @@ using FoosballApi.Models.OldRefreshTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using FoosballApi.Dtos.Users;
+using FoosballApi.Models.Google;
+using System.Text.Json;
 
 namespace FoosballApi.Services
 {
@@ -21,7 +23,7 @@ namespace FoosballApi.Services
         Task<VerificationModel> ForgotPassword(ForgotPasswordRequest model, string origin);
         Task<UpdatePasswordModel> UpdatePassword(UpdatePasswordRequest model, int userId);
         // bool SaveChanges();
-        VerificationModel AddVerificationInfo(User user, string origin);
+        VerificationModel AddVerificationInfo(User user, string origin, bool? hasVerified = false);
         // void ResetPassword(ResetPasswordRequest model);
         string CreateToken(User user);
         string GenerateRefreshToken();
@@ -31,6 +33,7 @@ namespace FoosballApi.Services
         Task DeleteOldRefreshTokenById(int id);
         Task DeleteOldTokens(int? organisationId);
         Task<User> RegisterGoogleUser(GoogleUserDto dto);
+        Task<GoogleUserInfo> GetGoogleUserInfoFromAccessToken(string accessToken);
     }
 
     public class AuthService : IAuthService
@@ -238,12 +241,12 @@ namespace FoosballApi.Services
         //     return hasVerified;
         // }
 
-        public VerificationModel AddVerificationInfo(User user, string origin)
+        public VerificationModel AddVerificationInfo(User user, string origin, bool? hasVerified = false)
         {
             VerificationModel vModel = new VerificationModel();
             vModel.UserId = user.Id;
             vModel.VerificationToken = GetRandomTokenString();
-            vModel.HasVerified = false;
+            vModel.HasVerified = hasVerified ?? false;
 
             // using dapper
             using (var conn = new NpgsqlConnection(_connectionString))
@@ -260,11 +263,10 @@ namespace FoosballApi.Services
 
         public async Task<User> RegisterGoogleUser(GoogleUserDto dto)
         {
-
             using var conn = new NpgsqlConnection(_connectionString);
             const string selectSql = "SELECT * FROM users WHERE email = @Email";
             var existingUser = await conn.QueryFirstOrDefaultAsync<User>(selectSql, new { dto.Email });
-
+            
             if (existingUser != null)
                 return existingUser;
 
@@ -276,14 +278,17 @@ namespace FoosballApi.Services
                 PhotoUrl = dto.PictureUrl,
                 GoogleId = dto.GoogleId,
                 AuthProvider = "Google",
-                Created_at = DateTime.UtcNow
+                Created_at = DateTime.UtcNow,
+                Password = "Google-Login-User"
             };
 
             const string insertSql = @"
-                INSERT INTO users (email, first_name, last_name, picture_url, google_id, auth_provider, created_at)
-                VALUES (@Email, @FirstName, @LastName, @PictureUrl, @GoogleId, @AuthProvider, @Created_at)";
+                INSERT INTO users (email, first_name, last_name, photo_url, google_id, auth_provider, created_at, password)
+                VALUES (@Email, @FirstName, @LastName, @PhotoUrl, @GoogleId, @AuthProvider, @Created_at, @Password)
+                RETURNING id";
 
-            await conn.ExecuteAsync(insertSql, newUser);
+            var insertedId = await conn.QuerySingleAsync<int>(insertSql, newUser);
+            newUser.Id = insertedId;
 
             return newUser;
         }
@@ -622,5 +627,31 @@ namespace FoosballApi.Services
             return result;
         }
 
+        public async Task<GoogleUserInfo> GetGoogleUserInfoFromAccessToken(string accessToken)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+                var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v2/userinfo");
+                
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var json = await response.Content.ReadAsStringAsync();
+                var userInfo = JsonSerializer.Deserialize<GoogleUserInfo>(json, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                return userInfo;
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }
