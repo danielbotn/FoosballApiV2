@@ -6,6 +6,8 @@ using FoosballApi.Models.Accounts;
 using FoosballApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Google.Apis.Auth;
+using FoosballApi.Models.Google;
 
 namespace FoosballApi.Controllers
 {
@@ -45,6 +47,72 @@ namespace FoosballApi.Controllers
                     return StatusCode(500, "Error, could not save refresh token to database");
 
                 UserLogin userLogin = new UserLogin
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Token = tokenString,
+                    RefreshToken = refreshToken
+                };
+
+                return Ok(userLogin);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
+        }
+
+        [HttpPost("google")]
+        [ProducesResponseType(typeof(UserLogin), StatusCodes.Status200OK)]
+        public async Task<ActionResult> AuthenticateWithGoogle([FromBody] GoogleLoginModel model)
+        {
+            try
+            {
+                // 1. Use the access token to get user info from Google API
+                var userInfo = await _authService.GetGoogleUserInfoFromAccessToken(model.AccessToken);
+                
+                if (userInfo == null)
+                {
+                    return Unauthorized("Invalid Google access token.");
+                }
+
+                // 2. Find user by email
+                var user = _userService.GetUserByEmail(userInfo.Email);
+
+                // 3. If user doesn't exist, register them
+                if (user == null)
+                {
+                    user = await _authService.RegisterGoogleUser(new GoogleUserDto
+                    {
+                        Email = userInfo.Email,
+                        FirstName = userInfo.GivenName,
+                        LastName = userInfo.FamilyName,
+                        PictureUrl = userInfo.Picture,
+                        GoogleId = userInfo.Id
+                    });
+
+                    _authService.AddVerificationInfo(user, Request.Headers["origin"], true);
+                }
+                bool isEmailAlreadyRegisteredLocally = user != null && user.Email == userInfo.Email && user.GoogleId == null;
+
+                if (isEmailAlreadyRegisteredLocally)
+                {
+                    // means that email is already in database
+                    return Unauthorized("Email is already registered");
+                }
+
+                // 4. Create JWT and refresh tokens
+                string tokenString = _authService.CreateToken(user);
+                string refreshToken = _authService.GenerateRefreshToken();
+                bool success = await _authService.SaveRefreshTokenToDatabase(refreshToken, user.Id);
+
+                if (!success)
+                    return StatusCode(500, "Error, could not save refresh token to database");
+
+                // 5. Return result
+                var userLogin = new UserLogin
                 {
                     Id = user.Id,
                     Email = user.Email,
@@ -135,7 +203,7 @@ namespace FoosballApi.Controllers
                 string refreshToken = tokenApiModel.RefreshToken;
                 var principal = _authService.GetPrincipalFromExpiredToken(accessToken);
                 var username = principal.Identity.Name;
-                
+
                 var name = principal.FindFirst("name").Value;
                 var userId = int.Parse(name);
                 var user = await _userService.GetUserById(userId);
@@ -150,7 +218,7 @@ namespace FoosballApi.Controllers
                             return BadRequest("Invalid client request from refresh endpoint");
                         }
                     }
-                    
+
                 }
 
                 if (user.CurrentOrganisationId is not null)
@@ -164,7 +232,7 @@ namespace FoosballApi.Controllers
 
                 if (!refreshTokenToDatabaseSuccessfull)
                     return StatusCode(500, "Error, could not save refresh token to database");
-                
+
                 return Ok(new UserLogin()
                 {
                     Id = user.Id,
@@ -175,7 +243,7 @@ namespace FoosballApi.Controllers
                     RefreshToken = newRefreshToken
                 });
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 return StatusCode(500, e.Message);
             }
@@ -213,7 +281,7 @@ namespace FoosballApi.Controllers
                 string userId = User.Identity.Name;
                 var verification = await _authService.UpdatePassword(model, int.Parse(userId));
                 var user = await _userService.GetUserById(int.Parse(userId));
-                
+
                 bool emailSent = false;
 
                 if (model.VerificationCode == null && verification.VerificationCodeCreated)
@@ -227,7 +295,7 @@ namespace FoosballApi.Controllers
                     await _emailService.SendVerificationChangePasswordEmail(verification.VerificationModel, user);
                     emailSent = true;
                 }
-                
+
                 var response = new UpdatePasswordResponse
                 {
                     EmailSent = emailSent,

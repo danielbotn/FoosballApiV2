@@ -18,8 +18,10 @@ namespace FoosballApi.Models
 
         public string PhotoUrl { get; set; }
         public bool? IsAdmin { get; set; }
-        public string RefreshToken { get; set; } 
+        public string RefreshToken { get; set; }
         public DateTime RefreshTokenExpiryTime { get; set; }
+        public string AuthProvider { get; set; }
+        public string GoogleId { get; set; }
 
     }
 }

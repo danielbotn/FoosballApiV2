@@ -585,6 +585,14 @@ docker build -t danielfoosball/foosballapi:1 .
 # docker run
 
 docker run -p 8080:80 danielfoosball/foosballapi:1
+sudo docker run -p 8080:80 --env-file .env danielfoosball/foosballapi:1
+
+# run docker on linux
+
+sudo docker run -p 8080:8080 \
+  --env-file .env \
+  --add-host=host.docker.internal:host-gateway \
+  danielfoosball/foosballapi:1
 
 # list docker images
 
@@ -737,3 +745,7 @@ ADD COLUMN discord_webhook_url TEXT;
 
 ALTER TABLE organisations
 ADD COLUMN microsoft_teams_webhook_url TEXT;
+
+ALTER TABLE users
+ADD COLUMN auth_provider text DEFAULT 'LOCAL'
+ADD COLUMN google_id text;

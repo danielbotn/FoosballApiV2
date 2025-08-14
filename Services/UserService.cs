@@ -2348,7 +2348,7 @@ namespace FoosballApi.Services
                     @"
                     SELECT id, email as Email, first_name as FirstName, last_name as LastName, 
                     created_at as Created_at, current_organisation_id as CurrentOrganisationId, 
-                    photo_url as PhotoUrl
+                    photo_url as PhotoUrl, google_id as GoogleId
                     FROM users
                     WHERE email = @email",
                     new { email });
