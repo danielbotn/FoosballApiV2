@@ -585,6 +585,14 @@ docker build -t danielfoosball/foosballapi:1 .
 # docker run
 
 docker run -p 8080:80 danielfoosball/foosballapi:1
+sudo docker run -p 8080:80 --env-file .env danielfoosball/foosballapi:1
+
+# run docker on linux
+
+sudo docker run -p 8080:8080 \
+  --env-file .env \
+  --add-host=host.docker.internal:host-gateway \
+  danielfoosball/foosballapi:1
 
 # list docker images
 
