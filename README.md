@@ -608,6 +608,8 @@ just kill the terminal in vscode should work
 
 # generate schema for database
 
+pg_dump -U postgres -d Foosball_DB -F p -f backup.sql
+
 https://support.sqldbm.com/en/knowledge-bases/2/articles/2407-how-to-generate-sql-script-from-pgadmin-for-reverse-engineering
 
 # To do list
