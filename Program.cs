@@ -28,6 +28,8 @@ if (!builder.Environment.IsDevelopment())
             options.ListenAnyIP(7145);
             options.ListenAnyIP(52729);
             options.ListenAnyIP(port);
+            Console.WriteLine("liste to PORT ");
+            Console.WriteLine(port);
         });
     }
 
