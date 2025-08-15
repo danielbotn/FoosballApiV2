@@ -28,7 +28,6 @@ if (!builder.Environment.IsDevelopment())
             options.ListenAnyIP(7145);
             options.ListenAnyIP(52729);
             options.ListenAnyIP(port);
-            options.ListenAnyIP(80);
         });
     }
 
