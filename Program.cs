@@ -17,22 +17,18 @@ var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
 
 // Configure Kestrel for non-development environments
-// var portVar = Environment.GetEnvironmentVariable("PORT");
-// if (!builder.Environment.IsDevelopment())
-// {
-//     if (portVar is { Length: > 0 } && int.TryParse(portVar, out int port))
-//     {
-//         builder.WebHost.ConfigureKestrel(options =>
-//         {
-//             options.ListenAnyIP(5297);
-//             options.ListenAnyIP(7145);
-//             options.ListenAnyIP(52729);
-//             options.ListenAnyIP(port);
-//             Console.WriteLine("liste to PORT ");
-//             Console.WriteLine(port);
-//         });
-//     }
-// }
+var portVar = Environment.GetEnvironmentVariable("PORT");
+if (!builder.Environment.IsDevelopment())
+{
+    if (int.TryParse(portVar, out var port))
+    {
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.ListenAnyIP(port);
+            Console.WriteLine($"Listening on port {port}");
+        });
+    }
+}
 
 // Add services to the container
 var jwtSecret = Environment.GetEnvironmentVariable("JwtSecret");
