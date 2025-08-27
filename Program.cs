@@ -13,7 +13,7 @@ using Newtonsoft.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load environment variables
+// Load environment variables.
 DotNetEnv.Env.Load();
 
 // Configure Kestrel for non-development environments
