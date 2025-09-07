@@ -20,11 +20,11 @@ namespace FoosballApi
     public class EmailData
     {
         public string from { get; set; }
-        public string[] to { get; set; }
+        public string to { get; set; }
         public string subject { get; set; }
         public string html { get; set; }
-        public EmailHeaders headers { get; set; }
-        public EmailAttachment[] attachments { get; set; }
+        // public EmailHeaders headers { get; set; }
+        // public EmailAttachment[] attachments { get; set; }
     }
 
     public class EmailHeaders
@@ -46,20 +46,20 @@ namespace FoosballApi
         }
 
        public async Task<string> SendWithApi(string to, string subject, string html, string from = null)
-        {
+       {
             HttpCaller httpCaller = new();
 
             // Construct the request body for sending an email using Resend API
             EmailData emailData = new()
             {
                 from = "Acme <onboarding@resend.dev>",
-                to = new[] { to },
+                to = to , // new[] { to },
                 subject = subject,
                 html = html,
-                headers = new EmailHeaders
-                {
-                    XEntityRefID = "123"
-                }
+                // headers = new EmailHeaders
+                // {
+                //     XEntityRefID = "123"
+                // }
             };
 
             string bodyParam = JsonConvert.SerializeObject(emailData);
@@ -70,6 +70,26 @@ namespace FoosballApi
             return data;
         }
 
+       public async Task<string> SendWithUnsendApi(string to, string subject, string html, string from = null)
+       {
+            HttpCaller httpCaller = new();
+
+            // Construct the request body for sending an email using Resend API
+            EmailData emailData = new()
+            {
+                from = Environment.GetEnvironmentVariable("unsendEmailNoReply"),
+                to = to,
+                subject = subject,
+                html = html,
+            };
+
+            string bodyParam = JsonConvert.SerializeObject(emailData);
+            string URL = Environment.GetEnvironmentVariable("unsendPath");
+
+            // Make the API call to send the email using Resend API
+            string data = await httpCaller.CallUnsendApi(bodyParam, URL);
+            return data;
+        }
 
         public void Send(string to, string subject, string html, string from = null)
         {
@@ -147,8 +167,8 @@ namespace FoosballApi
                                 <p>Regards,</p>
                                 <p>Dano Support</p>";
 
-            await SendWithApi(
-                to: "danielfrs87@gmail.com", // This need to change in production
+            await SendWithUnsendApi(
+                to: user.Email,
                 subject: "Dano Account Activation",
                 html: message
             );

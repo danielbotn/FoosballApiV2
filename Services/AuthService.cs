@@ -93,8 +93,8 @@ namespace FoosballApi.Services
             using (var conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Execute(
-                    @"INSERT INTO Users (email, password, first_name, last_name, created_at, photo_url, provider)
-                    VALUES (@email, @password, @first_name, @last_name, @created_at, @photo_url, @provider)",
+                    @"INSERT INTO Users (email, password, first_name, last_name, created_at, photo_url, auth_provider)
+                    VALUES (@email, @password, @first_name, @last_name, @created_at, @photo_url, @auth_provider)",
                     new
                     {
                         email = tmpUser.Email,
@@ -103,7 +103,7 @@ namespace FoosballApi.Services
                         last_name = tmpUser.LastName,
                         created_at = tmpUser.Created_at,
                         photo_url = tmpUser.PhotoUrl,
-                        provider = "LOCAL"
+                        auth_provider = "LOCAL"
                     });
             }
         }
